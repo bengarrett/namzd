@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/alecthomas/kong"
@@ -9,55 +8,47 @@ import (
 	"github.com/charlievieth/fastwalk"
 )
 
-var cli struct {
-	Debug bool `help:"Debug mode."`
+// ls, cp, lsz, cpz
 
-	Rm struct {
-		User      string `help:"Run as user." short:"u" default:"default"`
-		Force     bool   `help:"Force removal." short:"f"`
-		Recursive bool   `help:"Recursively remove files." short:"r"`
-
-		Paths []string `arg:"" help:"Paths to remove." type:"path" name:"path"`
-	} `cmd:"" help:"Remove files."`
-
-	Ls struct {
-		Name  string   `arg:"" optional:"" help:"Filename to match."`
-		Paths []string `arg:"" optional:"" help:"Paths to list." type:"path"`
-	} `cmd:"" help:"List paths."`
+type LsCmd struct {
+	CaseSensitive bool     `help:"Case sensitive match." short:"c"`
+	Count         bool     `help:"Count the number of matches." short:"n"`
+	Directories   bool     `help:"Include directory matches." short:"d" default:"true"`
+	Errors        bool     `help:"Errors mode displays any file and directory read or access errors." short:"e"`
+	Follow        bool     `help:"Follow symbolic links." short:"f"`
+	Panic         bool     `help:"Exits on any errors including file and directory read or access errors." short:"p"`
+	Workers       int      `help:"Number of workers to use or leave it to the app." short:"w" default:"0"`
+	Match         string   `arg:"" optional:"" help:"Filename, extension or pattern to match."`
+	Paths         []string `arg:"" optional:"" help:"Paths to lookup." type:"path"`
 }
 
-// ls, cp, lsz, cpz
+func (cmd *LsCmd) Run() error {
+	opt := ls.Config{
+		Casesensitive: cmd.CaseSensitive,
+		Count:         cmd.Count,
+		Directories:   cmd.Directories,
+		StdErrors:     cmd.Errors,
+		Follow:        cmd.Follow,
+		NumWorkers:    0,
+		Panic:         cmd.Panic,
+		Sort:          fastwalk.SortDirsFirst,
+	}
+	return opt.Walks(os.Stdout, cmd.Match, cmd.Paths...)
+}
+
+var cli struct {
+	Ls LsCmd `cmd:"" help:"List the matching files."`
+}
 
 func main() {
 	ctx := kong.Parse(&cli,
-		kong.Name("shell"),
-		kong.Description("A shell-like example app."),
+		kong.Name("namzd"),
+		kong.Description("Quickly find files by name or extension."),
 		kong.UsageOnError(),
 		kong.ConfigureHelp(kong.HelpOptions{
 			Compact: true,
 			Summary: true,
 		}))
-	switch ctx.Command() {
-	case "rm <path>":
-		fmt.Println(cli.Rm.Paths, cli.Rm.Force, cli.Rm.Recursive)
-
-	case "ls <name> <paths>":
-		fmt.Println(">", cli.Ls.Name, cli.Ls.Paths)
-
-		// Follow links if the "-L" flag is provided
-		opt := ls.Config{
-			Casesensitive: false,
-			Count:         true,
-			Directories:   false,
-			Follow:        true,
-			NumWorkers:    0,
-			Quiet:         true,
-			Panic:         false,
-			Sort:          fastwalk.SortDirsFirst,
-		}
-		opt.Walks(os.Stdout, cli.Ls.Name, cli.Ls.Paths...)
-
-	default:
-		fmt.Println("unknown command:", ctx.Command())
-	}
+	err := ctx.Run()
+	ctx.FatalIfErrorf(err)
 }

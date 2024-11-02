@@ -16,8 +16,8 @@ type Config struct {
 	Count         bool
 	Directories   bool
 	Follow        bool
-	Quiet         bool
 	Panic         bool
+	StdErrors     bool
 	NumWorkers    int
 	Sort          fastwalk.SortMode
 }
@@ -27,7 +27,7 @@ func (opt Config) Walks(w io.Writer, s string, roots ...string) error {
 	var err error
 	for _, root := range roots {
 		if count, err = opt.Walk(w, count, s, root); err != nil {
-			if !opt.Quiet {
+			if opt.StdErrors {
 				fmt.Fprintf(os.Stderr, "%s: %v\n", root, err)
 			}
 			if opt.Panic {
@@ -50,7 +50,7 @@ func (opt Config) Walk(w io.Writer, count int, s, root string) (int, error) {
 			if opt.Panic {
 				return err
 			}
-			if !opt.Quiet {
+			if opt.StdErrors {
 				fmt.Fprintf(os.Stderr, "%s: %v\n", path, err)
 			}
 			return nil
