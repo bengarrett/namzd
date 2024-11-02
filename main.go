@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/alecthomas/kong"
 	"github.com/bengarrett/namezed/ls"
@@ -50,9 +51,11 @@ func main() {
 			Directories:   false,
 			Follow:        true,
 			NumWorkers:    0,
+			Quiet:         true,
+			Panic:         false,
 			Sort:          fastwalk.SortDirsFirst,
 		}
-		opt.Walks(cli.Ls.Name, cli.Ls.Paths...)
+		opt.Walks(os.Stdout, cli.Ls.Name, cli.Ls.Paths...)
 
 	default:
 		fmt.Println("unknown command:", ctx.Command())
