@@ -10,6 +10,17 @@ import (
 
 // ls, cp, lsz, cpz
 
+// CpCmd is the command line options for the cp command.
+type CpCmd struct {
+	CaseSensitive bool     `help:"Case sensitive match." short:"c"`
+	Count         bool     `help:"Count the number of matches." short:"n"`
+	Panic         bool     `help:"Exits on any errors including file and directory read or access errors." short:"p"`
+	Destination   string   `required:"" help:"Destination path to copy matches." type:"path" short:"d"`
+	Match         string   `arg:"" required:"" help:"Filename, extension or pattern to match."`
+	Paths         []string `arg:"" required:"" help:"Paths to lookup." type:"path"`
+}
+
+// LsCmd is the command line options for the ls command.
 type LsCmd struct {
 	CaseSensitive bool     `help:"Case sensitive match." short:"c"`
 	Count         bool     `help:"Count the number of matches." short:"n"`
@@ -18,10 +29,11 @@ type LsCmd struct {
 	Follow        bool     `help:"Follow symbolic links." short:"f"`
 	Panic         bool     `help:"Exits on any errors including file and directory read or access errors." short:"p"`
 	Workers       int      `help:"Number of workers to use or leave it to the app." short:"w" default:"0"`
-	Match         string   `arg:"" optional:"" help:"Filename, extension or pattern to match."`
-	Paths         []string `arg:"" optional:"" help:"Paths to lookup." type:"path"`
+	Match         string   `arg:"" required:"" help:"Filename, extension or pattern to match."`
+	Paths         []string `arg:"" required:"" help:"Paths to lookup." type:"path"`
 }
 
+// Run the ls command.
 func (cmd *LsCmd) Run() error {
 	opt := ls.Config{
 		Casesensitive: cmd.CaseSensitive,
@@ -38,6 +50,7 @@ func (cmd *LsCmd) Run() error {
 
 var cli struct {
 	Ls LsCmd `cmd:"" help:"List the matching files."`
+	Cp CpCmd `cmd:"" help:"Copy the matching files to a destination."`
 }
 
 func main() {
