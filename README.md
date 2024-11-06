@@ -1,1 +1,1 @@
-# namezed
+# namzd

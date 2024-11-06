@@ -11,7 +11,7 @@ import (
 )
 
 type Globals struct {
-	Version VersionFlag `name:"version" help:"Show the version information and exit."`
+	Version VersionFlag `name:"version" help:"Show the version information and exit." short:"V"`
 }
 
 // VersionFlag is a custom flag type for the display of the version information.
@@ -118,7 +118,9 @@ func main() {
 		}),
 		kong.ExplicitGroups([]kong.Group{cpgrp, errgrp, zipgrp}),
 		kong.Vars{
-			"version": fmt.Sprintf("namzd %s, commit %s, built at %s", version, commit, date),
+			"version": fmt.Sprintf("namzd - Quickly find files.\n"+
+				"%s (commit %s), built at %s.\n%s",
+				version, commit, date, "https://github.com/bengarrett/namzd"),
 		})
 	err := ctx.Run()
 	ctx.FatalIfErrorf(err)
