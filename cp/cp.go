@@ -4,31 +4,16 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 )
 
 // CheckDest checks if the destination directory exists and is writable.
 func CheckDest(dir string) error {
-	if dir == "" {
-		return nil
-	}
-	st, err := os.Stat(dir)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("destination directory does not exist: %s", dir)
-	}
-	if err != nil {
-		return err
-	}
-	if !st.IsDir() {
-		return fmt.Errorf("destination is not a directory: %s", dir)
-	}
-	testFile := filepath.Join(dir, "namezed_test")
-	file, err := os.Create(testFile)
+	tmp, err := os.CreateTemp(dir, "namezed_test")
 	if err != nil {
 		return fmt.Errorf("destination directory is not writable: %s", err)
 	}
-	file.Close()
-	defer os.Remove(testFile)
+	tmp.Close()
+	defer os.Remove(tmp.Name())
 	return nil
 }
 

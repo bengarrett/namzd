@@ -13,6 +13,7 @@ import (
 	"github.com/charlievieth/fastwalk"
 )
 
+// Config is the configuration for the ls command.
 type Config struct {
 	Archive       bool
 	Casesensitive bool
@@ -26,6 +27,7 @@ type Config struct {
 	Sort          fastwalk.SortMode
 }
 
+// Walks the root directory paths to match filenames to the pattern and writes the results to the writer.
 func (opt Config) Walks(w io.Writer, pattern string, roots ...string) error {
 	count := 0
 	var err error
@@ -44,6 +46,8 @@ func (opt Config) Walks(w io.Writer, pattern string, roots ...string) error {
 	return nil
 }
 
+// Walk the root directory to match filenames to the pattern and writes the results to the writer.
+// The counted finds is returned or left at 0 if not counting.
 func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error) {
 	conf := fastwalk.Config{
 		Follow:     opt.Follow,
@@ -101,7 +105,7 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 
 // Copier copies the file to the destination directory.
 func (opt Config) Copier(path string) {
-	if opt.Destination == "" {
+	if opt.Destination == "" || opt.Archive {
 		return
 	}
 	defer func() {
@@ -115,6 +119,7 @@ func (opt Config) Copier(path string) {
 	}()
 }
 
+// Archiver opens the zip archive and returns the matched filenames to the pattern.
 func (opt Config) Archiver(pattern, path string) ([]string, error) {
 	if !opt.Archive {
 		return nil, nil
@@ -138,6 +143,7 @@ func (opt Config) Archiver(pattern, path string) ([]string, error) {
 	return finds, nil
 }
 
+// ZipArchive checks if the file is a zip archive.
 func ZipArchive(path string) bool {
 	file, err := os.Open(path)
 	if err != nil {
