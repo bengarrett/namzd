@@ -1,4 +1,4 @@
-module github.com/bengarrett/namezed
+module github.com/bengarrett/namzd
 
 go 1.23.2
 

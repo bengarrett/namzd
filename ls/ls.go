@@ -1,6 +1,7 @@
 package ls
 
 import (
+	"archive/tar"
 	"archive/zip"
 	"fmt"
 	"io"
@@ -9,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bengarrett/namezed/cp"
+	"github.com/bengarrett/namzd/cp"
 	"github.com/charlievieth/fastwalk"
 )
 
@@ -124,9 +125,42 @@ func (opt Config) Archiver(pattern, path string) ([]string, error) {
 	if !opt.Archive {
 		return nil, nil
 	}
-	if !ZipArchive(path) {
-		return nil, nil
+	if ZipArchive(path) {
+		return opt.Zips(pattern, path)
 	}
+	if TarArchive(path) {
+		return opt.Tars(pattern, path)
+	}
+	return nil, nil
+}
+
+// Tars opens the tar archive and returns the matched filenames to the pattern.
+func (opt Config) Tars(pattern, path string) ([]string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	tr := tar.NewReader(file)
+	finds := []string{}
+	for {
+		th, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if match, _ := opt.Match(pattern, th.Name, th.FileInfo().IsDir()); !match {
+			continue
+		}
+		finds = append(finds, th.Name)
+	}
+	return finds, nil
+}
+
+// Zips opens the zip archive and returns the matched filenames to the pattern.
+func (opt Config) Zips(pattern, path string) ([]string, error) {
 	r, err := zip.OpenReader(path)
 	if err != nil {
 		return nil, err
@@ -141,6 +175,26 @@ func (opt Config) Archiver(pattern, path string) ([]string, error) {
 		finds = append(finds, f.Name)
 	}
 	return finds, nil
+}
+
+// TarArchive checks if the file is a tar archive.
+func TarArchive(path string) bool {
+	file, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+	magic := make([]byte, 4)
+	if _, err := file.Read(magic); err != nil {
+		return false
+	}
+	// Check if the magic number matches the TAR file magic number
+	if magic[0] != 0x75 || magic[1] != 0x73 ||
+		magic[2] != 0x74 || magic[3] != 0x61 {
+		return false
+	}
+	file.Close()
+	return true
 }
 
 // ZipArchive checks if the file is a zip archive.

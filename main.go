@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/alecthomas/kong"
-	"github.com/bengarrett/namezed/cp"
-	"github.com/bengarrett/namezed/ls"
+	"github.com/bengarrett/namzd/cp"
+	"github.com/bengarrett/namzd/ls"
 	"github.com/charlievieth/fastwalk"
 )
 
@@ -61,7 +61,7 @@ func (cmd *Cmd) Run() error {
 	return opt.Walks(os.Stdout, cmd.Match, cmd.Paths...)
 }
 
-func Help() string {
+func help() string {
 	s := `
 
 A <match> query is a filename, extension or pattern to match.
@@ -79,6 +79,12 @@ type CLI struct {
 	Globals
 	Cmd `cmd:""`
 }
+
+var (
+	version = "development"
+	commit  = "none"
+	date    = "unknown"
+)
 
 func main() {
 	cli := CLI{
@@ -104,7 +110,7 @@ func main() {
 
 	ctx := kong.Parse(&cli,
 		kong.Name("namzd"),
-		kong.Description("Quickly find files by name or extension."+Help()),
+		kong.Description("Quickly find files by name or extension."+help()),
 		kong.UsageOnError(),
 		kong.ConfigureHelp(kong.HelpOptions{
 			Summary: false,
@@ -112,7 +118,7 @@ func main() {
 		}),
 		kong.ExplicitGroups([]kong.Group{cpgrp, errgrp, zipgrp}),
 		kong.Vars{
-			"version": "0.0.1",
+			"version": fmt.Sprintf("namzd %s, commit %s, built at %s", version, commit, date),
 		})
 	err := ctx.Run()
 	ctx.FatalIfErrorf(err)
