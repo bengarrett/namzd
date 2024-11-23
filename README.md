@@ -58,6 +58,19 @@ $ namzd 'go.*' ~/github/namzd --count
 1	/Users/ben/github/namzd/go.mod
 2	/Users/ben/github/namzd/go.sum
 ```
+
+- `namzd` is the application name.
+- `'go.*' is the pattern to match all files named 'go' using any file extension.
+- `~/github/namzd` is the directory to lookup and search.
+- `--count` is a flag to count the number of matches.
+
+These are the two matching results with the match count and the absolute path to the file locations.
+
+```
+1	/Users/ben/github/namzd/go.mod
+2	/Users/ben/github/namzd/go.sum
+```
+
 ---
 
 © 2024 Ben Garrett - GPL-3.0 license
