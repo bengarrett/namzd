@@ -60,7 +60,7 @@ $ namzd 'go.*' ~/github/namzd --count
 ```
 
 - `namzd` is the application name.
-- `'go.*' is the pattern to match all files named 'go' using any file extension.
+- `'go.*'` is the pattern to match all files named 'go' using any file extension.
 - `~/github/namzd` is the directory to lookup and search.
 - `--count` is a flag to count the number of matches.
 
