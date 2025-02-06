@@ -31,6 +31,7 @@ type Cmd struct {
 	Destination   string   `group:"copy" xor:"x0,x1" help:"Destination directory path to copy matches." type:"existingdir" short:"x"`
 	CaseSensitive bool     `help:"Case sensitive match." short:"c"`
 	Count         bool     `help:"Count the number of matches." short:"n"`
+	LastModified  bool     `help:"Show the last modified time of the match (yyyy-mm-dd)." short:"m"`
 	Directory     bool     `xor:"x1" help:"Include directory matches." short:"d" default:"true"`
 	Errors        bool     `group:"errs" help:"Errors mode displays any file and directory read or access errors." short:"e"`
 	Follow        bool     `help:"Follow symbolic links." short:"f"`
@@ -50,6 +51,7 @@ func (cmd *Cmd) Run() error {
 		Destination:   cmd.Destination,
 		StdErrors:     cmd.Errors,
 		Follow:        cmd.Follow,
+		LastModified:  cmd.LastModified,
 		NumWorkers:    0,
 		Panic:         cmd.Panic,
 		Sort:          fastwalk.SortDirsFirst,

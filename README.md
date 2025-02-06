@@ -27,6 +27,7 @@ Flags:
   -V, --version           Show the version information and exit.
   -c, --case-sensitive    Case sensitive match.
   -n, --count             Count the number of matches.
+  -m, --last-modified     Show the last modified time of the match (yyyy-mm-dd).
   -d, --directory         Include directory matches.
   -f, --follow            Follow symbolic links.
 
@@ -73,4 +74,4 @@ These are the two matching results with the match count and the absolute path to
 
 ---
 
-© 2024 Ben Garrett - GPL-3.0 license
+© 2024-25 Ben Garrett - GPL-3.0 license

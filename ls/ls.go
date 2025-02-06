@@ -21,6 +21,7 @@ type Config struct {
 	Count         bool
 	Directory     bool
 	Follow        bool
+	LastModified  bool
 	Panic         bool
 	StdErrors     bool
 	Destination   string
@@ -79,10 +80,11 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 			for _, f := range finds {
 				if opt.Count {
 					count++
-					fmt.Fprintf(w, "%d\t%s > %s\n", count, f, path)
-					continue
+					fmt.Fprintf(w, "%d\t", count)
 				}
-				fmt.Fprintf(w, "%s > %s", path, f)
+				fmt.Fprintf(w, "%s", f)
+				lastModified(w, opt.LastModified, d)
+				fmt.Fprintf(w, " > %s\n", path)
 			}
 			return nil
 		}
@@ -102,6 +104,18 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 		return count, err
 	}
 	return count, nil
+}
+
+func lastModified(w io.Writer, lm bool, d fs.DirEntry) {
+	if !lm {
+		return
+	}
+	st, err := d.Info()
+	if err != nil {
+		return
+	}
+	s := st.ModTime().Format("2006-01-02")
+	fmt.Fprintf(w, " (%s)", s)
 }
 
 // Copier copies the file to the destination directory.
