@@ -76,17 +76,17 @@ These are the two matching results with the match count and the absolute path to
 
 #### Example 2
 
-Example 3 matches both the names of files found in the directories and within zip and tar archives.
+This example matches both the names of files found in the directories and within zip and uncompressed tar archives.
 It also shows the last modified date of the matches and the oldest match.
 
 ```sh
 $ namzd 'file_id.diz' /home/ben/downloads --count --archive --last-modified --oldest
 
-1    file_id.diz (1996-12-30) > /home/ben/downloads/stuff.zip
-2    FILE_ID.DIZ (1993-01-19) > /home/ben/downloads/WOLFUPD.ZIP
-3    FILE_ID.DIZ (1993-10-16) > /home/ben/downloads/YOLKFOLK.ZIP
+1 file_id.diz (1996-12-30) > /home/ben/downloads/stuff.tar
+2 FILE_ID.DIZ (1993-01-19) > /home/ben/downloads/WOLFUPD.ZIP
+3 FILE_ID.DIZ (1993-10-16) > /home/ben/downloads/YOLKFOLK.ZIP
 Oldest found match:
-2    FILE_ID.DIZ (1993-01-19) > /home/ben/downloads/WOLFUPD.ZIP
+2 FILE_ID.DIZ (1993-01-19) > /home/ben/downloads/WOLFUPD.ZIP
 ```
 
 ---

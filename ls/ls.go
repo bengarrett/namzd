@@ -81,17 +81,16 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 			return nil
 		}
 		if len(finds) > 0 {
-			for _, f := range finds {
+			for _, fd := range finds {
 				if opt.Count {
 					count++
 				}
-				st, _ := d.Info()
-				Print(w, count, f, path, st)
+				Print(w, count, path, fd)
 				if opt.Oldest {
-					oldest.UpdateO(count, f, path, st)
+					oldest.UpdateO(count, path, fd)
 				}
 				if opt.Newest {
-					newest.UpdateN(count, f, path, st)
+					newest.UpdateN(count, path, fd)
 				}
 			}
 			return nil
@@ -100,6 +99,7 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 			return err
 		}
 		opt.Copier(path)
+		opt.Update(d, count, path, &oldest, &newest)
 		if opt.Count {
 			count++
 			_, err = fmt.Fprintf(w, "%d\t%s\n", count, path)
@@ -111,13 +111,13 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 	if err := fastwalk.Walk(&conf, root, walkFn); err != nil {
 		return count, err
 	}
-	if opt.Oldest && !oldest.Modtime.IsZero() && count > 1 {
+	if opt.Oldest && !oldest.Fd.ModTime.IsZero() && count > 1 {
 		fmt.Fprintln(w, "Oldest found match:")
-		Print(w, oldest.Count, oldest.Filename, oldest.Path, oldest.Info)
+		Print(w, oldest.Count, oldest.Path, oldest.Fd)
 	}
-	if opt.Newest && !newest.Modtime.IsZero() && count > 1 {
+	if opt.Newest && !newest.Fd.ModTime.IsZero() && count > 1 {
 		fmt.Fprintln(w, "Newest found match:")
-		Print(w, newest.Count, newest.Filename, newest.Path, newest.Info)
+		Print(w, newest.Count, newest.Path, newest.Fd)
 	}
 	return count, nil
 }
@@ -138,8 +138,41 @@ func (opt Config) Copier(path string) {
 	}()
 }
 
-// Archiver opens the zip archive and returns the matched filenames to the pattern.
-func (opt Config) Archiver(pattern, path string) ([]string, error) {
+// Update the oldest and newest matches with the count, filename, path and file info.
+// If the oldest and newest flags are not set or there is an error, the function exits.
+func (opt Config) Update(d fs.DirEntry, count int, path string, oldest, newest *Match) {
+	if !opt.Oldest && !opt.Newest {
+		return
+	}
+	if oldest == nil || newest == nil {
+		return
+	}
+	info, err := d.Info()
+	if err != nil {
+		return
+	}
+	if opt.Oldest {
+		oldest.UpdateO(count, path, Find{
+			Name:    d.Name(),
+			ModTime: info.ModTime(),
+		})
+	}
+	if opt.Newest {
+		newest.UpdateN(count, path, Find{
+			Name:    d.Name(),
+			ModTime: info.ModTime(),
+		})
+	}
+}
+
+// Find is the matched filename and last modification time of the file.
+type Find struct {
+	Name    string
+	ModTime time.Time
+}
+
+// Archiver reads the index of a tar or zip archive and returns the matched filenames to the pattern.
+func (opt Config) Archiver(pattern, path string) ([]Find, error) {
 	if !opt.Archive {
 		return nil, nil
 	}
@@ -152,15 +185,15 @@ func (opt Config) Archiver(pattern, path string) ([]string, error) {
 	return nil, nil
 }
 
-// Tars opens the tar archive and returns the matched filenames to the pattern.
-func (opt Config) Tars(pattern, path string) ([]string, error) {
+// Tars reads the index of the tar archive and returns the matched filenames to the pattern.
+func (opt Config) Tars(pattern, path string) ([]Find, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 	tr := tar.NewReader(file)
-	finds := []string{}
+	finds := []Find{}
 	for {
 		th, err := tr.Next()
 		if err == io.EOF {
@@ -172,25 +205,31 @@ func (opt Config) Tars(pattern, path string) ([]string, error) {
 		if match, _ := opt.Match(pattern, th.Name, th.FileInfo().IsDir()); !match {
 			continue
 		}
-		finds = append(finds, th.Name)
+		finds = append(finds, Find{
+			Name:    th.Name,
+			ModTime: th.ModTime,
+		})
 	}
 	return finds, nil
 }
 
-// Zips opens the zip archive and returns the matched filenames to the pattern.
-func (opt Config) Zips(pattern, path string) ([]string, error) {
+// Zips reads the index of the zip archive and returns the matched filenames to the pattern.
+func (opt Config) Zips(pattern, path string) ([]Find, error) {
 	r, err := zip.OpenReader(path)
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
-	finds := []string{}
+	finds := []Find{}
 	for _, f := range r.File {
 		fi := f.FileInfo()
 		if match, _ := opt.Match(pattern, f.Name, fi.IsDir()); !match {
 			continue
 		}
-		finds = append(finds, f.Name)
+		finds = append(finds, Find{
+			Name:    f.Name,
+			ModTime: f.Modified,
+		})
 	}
 	return finds, nil
 }
@@ -251,73 +290,82 @@ func (opt Config) Match(pattern, filename string, isDir bool) (bool, error) {
 // Match is the matched filename and path.
 // It is used when the oldest or newest flags are set.
 type Match struct {
-	Count    int         // Count of matches.
-	Filename string      // Filename matched.
-	Path     string      // Path to the matched file.
-	Info     fs.FileInfo // File info of the matched file.
-	Modtime  time.Time   // Last modified time of the matched file.
+	Count int    // Count of matches.
+	Path  string // Path to the matched file.
+	Fd    Find   // Find of the matched file.
 }
 
 // Older checks if the time is older than the match.
 func (m Match) Older(t time.Time) bool {
-	if m.Modtime.IsZero() {
+	if DosEpoch(t) {
+		return false
+	}
+	if m.Fd.ModTime.IsZero() {
 		return true
 	}
-	return t.Before(m.Modtime)
+	return t.Before(m.Fd.ModTime)
 }
 
 // Newer checks if the time is newer than the match.
 func (m Match) Newer(t time.Time) bool {
-	if m.Modtime.IsZero() {
+	if DosEpoch(t) {
+		return false
+	}
+	if m.Fd.ModTime.IsZero() {
 		return true
 	}
-	return t.After(m.Modtime)
+	return t.After(m.Fd.ModTime)
 }
 
 // UpdateO the match with the count, filename, path and file info if the modtime is older.
-func (m *Match) UpdateO(c int, f, path string, info fs.FileInfo) {
-	if info == nil {
+func (m *Match) UpdateO(c int, path string, fd Find) {
+
+	if fd.ModTime.IsZero() || fd.Name == "" {
 		return
 	}
-	t := info.ModTime()
+	t := fd.ModTime
 	if !m.Older(t) {
 		return
 	}
 	m.Count = c
-	m.Filename = f
 	m.Path = path
-	m.Info = info
-	m.Modtime = t
+	m.Fd = fd
 }
 
 // Update the match with the count, filename, path and file info if the modtime is newer.
-func (m *Match) UpdateN(c int, f, path string, info fs.FileInfo) {
-	if info == nil {
+func (m *Match) UpdateN(c int, path string, fd Find) {
+	if fd.ModTime.IsZero() || fd.Name == "" {
 		return
 	}
-	t := info.ModTime()
+	t := fd.ModTime
 	if !m.Newer(t) {
 		return
 	}
 	m.Count = c
-	m.Filename = f
 	m.Path = path
-	m.Info = info
-	m.Modtime = t
+	m.Fd = fd
 }
 
 // Print the match to the writer.
-func Print(w io.Writer, count int, f, path string, info fs.FileInfo) {
+func Print(w io.Writer, count int, path string, fd Find) {
 	if w == nil {
 		w = io.Discard
 	}
 	if count > 0 {
 		fmt.Fprintf(w, "%d\t", count)
 	}
-	fmt.Fprintf(w, "%s", f)
-	if info != nil {
-		s := info.ModTime().Format("2006-01-02")
+	fmt.Fprintf(w, "%s", fd.Name)
+	if !fd.ModTime.IsZero() {
+		s := fd.ModTime.Format("2006-01-02")
 		fmt.Fprintf(w, " (%s)", s)
 	}
 	fmt.Fprintf(w, " > %s\n", path)
+}
+
+// DosEpoch checks if the time is before the MS-DOS epoch.
+//
+// However due to false positives created by systems that lacked a real-time clock,
+// it treats Epoch as the 1 February 1980, and not 1 January, 1980.
+func DosEpoch(t time.Time) bool {
+	return t.UTC().Before(time.Date(1980, 2, 0, 0, 0, 0, 0, time.UTC))
 }
