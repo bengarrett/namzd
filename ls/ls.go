@@ -39,7 +39,6 @@ func (opt Config) Walks(w io.Writer, pattern string, roots ...string) error {
 	for _, root := range roots {
 		if count, err = opt.Walk(w, count, pattern, root); err != nil {
 			if opt.StdErrors {
-				// hello
 				fmt.Fprintf(os.Stderr, "%s: %v\n", root, err)
 			}
 			if opt.Panic {
@@ -120,6 +119,19 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 		Print(w, newest.Count, newest.Path, newest.Fd)
 	}
 	return count, nil
+}
+
+// Match checks if the file or directory matches the glob pattern or name.
+func (opt Config) Match(pattern, filename string, isDir bool) (bool, error) {
+	if isDir && !opt.Directory {
+		return false, nil
+	}
+	name := filename
+	if !opt.Casesensitive {
+		pattern = strings.ToLower(pattern)
+		name = strings.ToLower(name)
+	}
+	return filepath.Match(pattern, name)
 }
 
 // Copier copies the file to the destination directory.
@@ -272,19 +284,6 @@ func ZipArchive(path string) bool {
 	}
 	file.Close()
 	return true
-}
-
-// Match checks if the file or directory matches the glob pattern or name.
-func (opt Config) Match(pattern, filename string, isDir bool) (bool, error) {
-	if isDir && !opt.Directory {
-		return false, nil
-	}
-	name := filename
-	if !opt.Casesensitive {
-		pattern = strings.ToLower(pattern)
-		name = strings.ToLower(name)
-	}
-	return filepath.Match(pattern, name)
 }
 
 // Match is the matched filename and path.
