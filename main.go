@@ -32,6 +32,8 @@ type Cmd struct {
 	CaseSensitive bool     `help:"Case sensitive match." short:"c"`
 	Count         bool     `help:"Count the number of matches." short:"n"`
 	LastModified  bool     `help:"Show the last modified time of the match (yyyy-mm-dd)." short:"m"`
+	Oldest        bool     `help:"Show the oldest file match." short:"o"`
+	Newest        bool     `help:"Show the newest file match." short:"N"`
 	Directory     bool     `xor:"x1" help:"Include directory matches." short:"d" default:"true"`
 	Errors        bool     `group:"errs" help:"Errors mode displays any file and directory read or access errors." short:"e"`
 	Follow        bool     `help:"Follow symbolic links." short:"f"`
@@ -52,6 +54,8 @@ func (cmd *Cmd) Run() error {
 		StdErrors:     cmd.Errors,
 		Follow:        cmd.Follow,
 		LastModified:  cmd.LastModified,
+		Oldest:        cmd.Oldest,
+		Newest:        cmd.Newest,
 		NumWorkers:    0,
 		Panic:         cmd.Panic,
 		Sort:          fastwalk.SortDirsFirst,

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/bengarrett/namzd/cp"
 	"github.com/charlievieth/fastwalk"
@@ -22,6 +23,8 @@ type Config struct {
 	Directory     bool
 	Follow        bool
 	LastModified  bool
+	Oldest        bool
+	Newest        bool
 	Panic         bool
 	StdErrors     bool
 	Destination   string
@@ -56,6 +59,7 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 		Sort:       opt.Sort,
 		NumWorkers: opt.NumWorkers,
 	}
+	oldest, newest := Match{}, Match{}
 	walkFn := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			if opt.Panic {
@@ -80,11 +84,15 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 			for _, f := range finds {
 				if opt.Count {
 					count++
-					fmt.Fprintf(w, "%d\t", count)
 				}
-				fmt.Fprintf(w, "%s", f)
-				lastModified(w, opt.LastModified, d)
-				fmt.Fprintf(w, " > %s\n", path)
+				st, _ := d.Info()
+				Print(w, count, f, path, st)
+				if opt.Oldest {
+					oldest.UpdateO(count, f, path, st)
+				}
+				if opt.Newest {
+					newest.UpdateN(count, f, path, st)
+				}
 			}
 			return nil
 		}
@@ -103,19 +111,15 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 	if err := fastwalk.Walk(&conf, root, walkFn); err != nil {
 		return count, err
 	}
+	if opt.Oldest && !oldest.Modtime.IsZero() && count > 1 {
+		fmt.Fprintln(w, "Oldest found match:")
+		Print(w, oldest.Count, oldest.Filename, oldest.Path, oldest.Info)
+	}
+	if opt.Newest && !newest.Modtime.IsZero() && count > 1 {
+		fmt.Fprintln(w, "Newest found match:")
+		Print(w, newest.Count, newest.Filename, newest.Path, newest.Info)
+	}
 	return count, nil
-}
-
-func lastModified(w io.Writer, lm bool, d fs.DirEntry) {
-	if !lm {
-		return
-	}
-	st, err := d.Info()
-	if err != nil {
-		return
-	}
-	s := st.ModTime().Format("2006-01-02")
-	fmt.Fprintf(w, " (%s)", s)
 }
 
 // Copier copies the file to the destination directory.
@@ -242,4 +246,78 @@ func (opt Config) Match(pattern, filename string, isDir bool) (bool, error) {
 		name = strings.ToLower(name)
 	}
 	return filepath.Match(pattern, name)
+}
+
+// Match is the matched filename and path.
+// It is used when the oldest or newest flags are set.
+type Match struct {
+	Count    int         // Count of matches.
+	Filename string      // Filename matched.
+	Path     string      // Path to the matched file.
+	Info     fs.FileInfo // File info of the matched file.
+	Modtime  time.Time   // Last modified time of the matched file.
+}
+
+// Older checks if the time is older than the match.
+func (m Match) Older(t time.Time) bool {
+	if m.Modtime.IsZero() {
+		return true
+	}
+	return t.Before(m.Modtime)
+}
+
+// Newer checks if the time is newer than the match.
+func (m Match) Newer(t time.Time) bool {
+	if m.Modtime.IsZero() {
+		return true
+	}
+	return t.After(m.Modtime)
+}
+
+// UpdateO the match with the count, filename, path and file info if the modtime is older.
+func (m *Match) UpdateO(c int, f, path string, info fs.FileInfo) {
+	if info == nil {
+		return
+	}
+	t := info.ModTime()
+	if !m.Older(t) {
+		return
+	}
+	m.Count = c
+	m.Filename = f
+	m.Path = path
+	m.Info = info
+	m.Modtime = t
+}
+
+// Update the match with the count, filename, path and file info if the modtime is newer.
+func (m *Match) UpdateN(c int, f, path string, info fs.FileInfo) {
+	if info == nil {
+		return
+	}
+	t := info.ModTime()
+	if !m.Newer(t) {
+		return
+	}
+	m.Count = c
+	m.Filename = f
+	m.Path = path
+	m.Info = info
+	m.Modtime = t
+}
+
+// Print the match to the writer.
+func Print(w io.Writer, count int, f, path string, info fs.FileInfo) {
+	if w == nil {
+		w = io.Discard
+	}
+	if count > 0 {
+		fmt.Fprintf(w, "%d\t", count)
+	}
+	fmt.Fprintf(w, "%s", f)
+	if info != nil {
+		s := info.ModTime().Format("2006-01-02")
+		fmt.Fprintf(w, " (%s)", s)
+	}
+	fmt.Fprintf(w, " > %s\n", path)
 }
