@@ -101,10 +101,8 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 		opt.Update(d, count, path, &oldest, &newest)
 		if opt.Count {
 			count++
-			_, err = fmt.Fprintf(w, "%d\t%s\n", count, path)
-			return err
 		}
-		_, err = fmt.Fprintln(w, path)
+		opt.Print(w, count, path)
 		return err
 	}
 	if err := fastwalk.Walk(&conf, root, walkFn); err != nil {
@@ -346,7 +344,7 @@ func (m *Match) UpdateN(c int, path string, fd Find) {
 	m.Fd = fd
 }
 
-// Print the match to the writer.
+// Print the matched find to the writer.
 func Print(w io.Writer, lastMod bool, count int, path string, fd Find) {
 	if w == nil {
 		w = io.Discard
@@ -360,6 +358,27 @@ func Print(w io.Writer, lastMod bool, count int, path string, fd Find) {
 		fmt.Fprintf(w, " (%s)", s)
 	}
 	fmt.Fprintf(w, " > %s\n", path)
+}
+
+// Print the matched path to the writer.
+func (opt Config) Print(w io.Writer, count int, path string) {
+	if w == nil {
+		w = io.Discard
+	}
+	if count > 0 {
+		fmt.Fprintf(w, "%d\t", count)
+	}
+	if opt.LastModified {
+		fi, err := os.Stat(path)
+		if err != nil {
+			fmt.Fprintln(w)
+			return
+		}
+		s := fi.ModTime().Format("2006-01-02")
+		fmt.Fprintf(w, "(%s) ", s)
+	}
+	fmt.Fprintf(w, "%s", path)
+	fmt.Fprintln(w)
 }
 
 // DosEpoch checks if the time is before the MS-DOS epoch.
