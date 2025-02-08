@@ -2,10 +2,258 @@ package ls
 
 import (
 	"bytes"
-	"os"
+	"fmt"
+	"io"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestConfig_Copier(t *testing.T) {
+	tdir, _ := filepath.Abs(filepath.Join("..", "testdata"))
+	tests := []struct {
+		name         string
+		path         string
+		opt          Config
+		wantContains []string
+	}{
+		{
+			name: "Invalid path",
+			path: "invalid_path",
+			opt: Config{
+				Destination: t.TempDir(),
+			},
+			wantContains: []string{"no such file or directory"},
+		},
+		{
+			name: "Invalid drestination",
+			path: tdir,
+			opt: Config{
+				Destination: "invalid_destionation",
+			},
+			wantContains: []string{"no such file or directory"},
+		},
+		{
+			name: "Copy a directory",
+			path: tdir,
+			opt: Config{
+				Destination: t.TempDir(),
+			},
+			wantContains: []string{"is a directory"},
+		},
+		{
+			name: "Copy a file",
+			path: filepath.Join(tdir, "archive.tar"),
+			opt: Config{
+				Destination: t.TempDir(),
+			},
+			wantContains: []string{""},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			tt.opt.StdErrors = true      // Enable standard error output
+			tt.opt.Copier(&buf, tt.path) // copier does not return anything
+			for _, want := range tt.wantContains {
+				if got := buf.String(); !strings.Contains(got, want) {
+					t.Errorf("Config.Walk() = %v, want %v", got, want)
+				}
+			}
+		})
+	}
+}
+
+func TestConfig(t *testing.T) {
+	tdir, _ := filepath.Abs(filepath.Join("..", "testdata"))
+	fmatches := []string{"file_1996", "file_1997.xyz", "file_2002.zyx",
+		"archive.tar.xz", "archive.zip", "archive.tar"}
+	tests := []struct {
+		name         string
+		pattern      string
+		path         string
+		opt          Config
+		wantContains []string
+		wantErr      bool
+	}{
+		{
+			name:    "Invalid directory",
+			pattern: "*",
+			path:    "/invalid_path",
+			opt: Config{
+				StdErrors: true,
+				Panic:     true,
+			},
+			wantContains: []string{""},
+			wantErr:      true,
+		},
+		{
+			name:         "A directory",
+			pattern:      "*",
+			path:         tdir,
+			opt:          Config{},
+			wantContains: fmatches,
+			wantErr:      false,
+		},
+		{
+			name:    "Directory and archives",
+			pattern: "*",
+			path:    tdir,
+			opt: Config{
+				Archive: true,
+			},
+			wantContains: []string{"file_1985 > ", "file_2012.txt > "},
+			wantErr:      false,
+		},
+		{
+			name:    "Directory and archives plus display modtime",
+			pattern: "*",
+			path:    tdir,
+			opt: Config{
+				Archive:      true,
+				LastModified: true,
+			},
+			wantContains: []string{"file_1985 (1985-01-01) > ",
+				"file_2012.txt (2012-01-01) > "},
+			wantErr: false,
+		},
+		{
+			name:    "Directory and archives plus display count, modtime",
+			pattern: "*",
+			path:    tdir,
+			opt: Config{
+				Archive:      true,
+				Count:        true,
+				LastModified: true,
+			},
+			wantContains: []string{"5	file_1985 (1985-01-01) > ",
+				"6	file_2012.txt (2012-01-01) > "},
+			wantErr: false,
+		},
+		{
+			name:    "Directories files and archives plus display count modtime",
+			pattern: "*",
+			path:    tdir,
+			opt: Config{
+				Archive:      true,
+				Count:        true,
+				Directory:    true,
+				LastModified: true,
+			},
+			wantContains: []string{"6	file_1985 (1985-01-01) > ",
+				"7	file_2012.txt (2012-01-01) > "},
+			wantErr: false,
+		},
+		{
+			name:    "Oldest",
+			pattern: "*",
+			path:    tdir,
+			opt: Config{
+				Archive: true,
+				Count:   true,
+				Oldest:  true,
+			},
+			wantContains: []string{"Oldest found match:",
+				"5	file_1985 (1985-01-01) > "},
+			wantErr: false,
+		},
+		{
+			name:    "Newest",
+			pattern: "*",
+			path:    tdir,
+			opt: Config{
+				Archive: true,
+				Count:   true,
+				Newest:  true,
+			},
+			wantContains: []string{"Newest found match:",
+				"3	archive.tar.xz (2025-02-08) >"},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			const resetCount = 0
+			var buf bytes.Buffer
+			_, err := tt.opt.Walk(&buf, resetCount, tt.pattern, tt.path)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Config.Walk() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			for _, want := range tt.wantContains {
+				if got := buf.String(); !strings.Contains(got, want) {
+					t.Errorf("Config.Walk() = %v, want %v", got, want)
+				}
+			}
+		})
+	}
+}
+
+func TestConfig_Walk(t *testing.T) {
+	tdir, _ := filepath.Abs(filepath.Join("..", "testdata"))
+	tests := []struct {
+		name      string
+		pattern   string
+		path      string
+		opt       Config
+		wantFinds int
+		wantErr   bool
+	}{
+		{
+			name:      "Invalid path",
+			pattern:   "*",
+			path:      "invalid_path",
+			opt:       Config{},
+			wantFinds: 0,
+			wantErr:   true,
+		},
+		{
+			name:      "Search within a directory",
+			pattern:   "*",
+			path:      tdir,
+			opt:       Config{},
+			wantFinds: 6,
+			wantErr:   false,
+		},
+		{
+			name:    "Search within a directory and archives",
+			pattern: "file_*",
+			path:    tdir,
+			opt: Config{
+				Archive: true,
+			},
+			wantFinds: 5, // 3 files in the directory and 2 in the archives
+			wantErr:   false,
+		},
+		{
+			name:    "Match files and directories",
+			pattern: "*",
+			path:    tdir,
+			opt: Config{
+				Directory: true,
+			},
+			wantFinds: 8,
+			wantErr:   false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			const resetCount = 0
+			tt.opt.Count = true      // Enable counting otherwise 0 is always returned
+			tt.opt.StdErrors = false // Disable standard error output
+			fmt.Println(tt.path)
+			count, err := tt.opt.Walk(io.Discard, resetCount, tt.pattern, tt.path)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Config.Walk() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if count != tt.wantFinds {
+				t.Errorf("Config.Walk() = %v, want %v", count, tt.wantFinds)
+			}
+		})
+	}
+}
 
 func TestDosEpoch(t *testing.T) {
 	tests := []struct {
@@ -95,7 +343,7 @@ func TestPrint(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			Print(&buf, tt.count, tt.path, tt.fd)
+			Print(&buf, true, tt.count, tt.path, tt.fd)
 			if got := buf.String(); got != tt.want {
 				t.Errorf("Print() = %v, want %v", got, tt.want)
 			}
@@ -277,86 +525,6 @@ func TestMatch_UpdateN(t *testing.T) {
 	}
 }
 
-func TestTarArchive(t *testing.T) {
-	tests := []struct {
-		name     string
-		fileData []byte
-		want     bool
-	}{
-		{
-			name:     "Valid tar archive",
-			fileData: []byte{0x75, 0x73, 0x74, 0x61},
-			want:     true,
-		},
-		{
-			name:     "Invalid tar archive",
-			fileData: []byte{0x00, 0x00, 0x00, 0x00},
-			want:     false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tmpfile, err := os.CreateTemp("", "testtar")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.Remove(tmpfile.Name())
-
-			if _, err := tmpfile.Write(tt.fileData); err != nil {
-				t.Fatal(err)
-			}
-			if err := tmpfile.Close(); err != nil {
-				t.Fatal(err)
-			}
-
-			if got := TarArchive(tmpfile.Name()); got != tt.want {
-				t.Errorf("TarArchive() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestZipArchive(t *testing.T) {
-	tests := []struct {
-		name     string
-		fileData []byte
-		want     bool
-	}{
-		{
-			name:     "Valid zip archive",
-			fileData: []byte{0x50, 0x4B, 0x03, 0x04},
-			want:     true,
-		},
-		{
-			name:     "Invalid zip archive",
-			fileData: []byte{0x00, 0x00, 0x00, 0x00},
-			want:     false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tmpfile, err := os.CreateTemp("", "testzip")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.Remove(tmpfile.Name())
-
-			if _, err := tmpfile.Write(tt.fileData); err != nil {
-				t.Fatal(err)
-			}
-			if err := tmpfile.Close(); err != nil {
-				t.Fatal(err)
-			}
-
-			if got := ZipArchive(tmpfile.Name()); got != tt.want {
-				t.Errorf("ZipArchive() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestConfig_Walks(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -403,6 +571,68 @@ func TestConfig_Walks(t *testing.T) {
 			err := tt.config.Walks(&buf, tt.pattern, tt.roots...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Config.Walks() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestConfig_Archiver(t *testing.T) {
+	atar := filepath.Join("..", "testdata", "archive.tar")
+	atxz := filepath.Join("..", "testdata", "archive.tar.xz")
+	azip := filepath.Join("..", "testdata", "archive.zip")
+	tests := []struct {
+		name      string
+		pattern   string
+		path      string
+		opt       Config
+		wantFinds int
+		wantErr   bool
+	}{
+		{
+			name:      "Invalid path",
+			pattern:   "*",
+			path:      "invalid_path",
+			opt:       Config{},
+			wantFinds: 0,
+			wantErr:   false,
+		},
+		{
+			name:      "Search within an uncompress TAR archive",
+			pattern:   "file_2012*",
+			path:      atar,
+			opt:       Config{},
+			wantFinds: 1,
+			wantErr:   false,
+		},
+		{
+			name:      "Search within a compress TAR.XZ archive",
+			pattern:   "file_2012*",
+			path:      atxz,
+			opt:       Config{},
+			wantFinds: 0,
+			wantErr:   false,
+		},
+		{
+			name:      "Search within an compress ZIP archive",
+			pattern:   "file_1985*",
+			path:      azip,
+			opt:       Config{},
+			wantFinds: 1,
+			wantErr:   false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.opt.Archive = true
+			path, _ := filepath.Abs(tt.path)
+			fmt.Println(path)
+			finds, err := tt.opt.Archiver(tt.pattern, path)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Config.Archiver() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if len(finds) != tt.wantFinds {
+				t.Errorf("Config.Archiver() = %v, want %v", len(finds), tt.wantFinds)
 			}
 		})
 	}

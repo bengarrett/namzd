@@ -84,7 +84,7 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 				if opt.Count {
 					count++
 				}
-				Print(w, count, path, fd)
+				Print(w, opt.LastModified, count, path, fd)
 				if opt.Oldest {
 					oldest.UpdateO(count, path, fd)
 				}
@@ -97,7 +97,7 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 		if match, err := opt.Match(pattern, d.Name(), d.IsDir()); !match {
 			return err
 		}
-		opt.Copier(path)
+		opt.Copier(os.Stderr, path)
 		opt.Update(d, count, path, &oldest, &newest)
 		if opt.Count {
 			count++
@@ -112,11 +112,11 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 	}
 	if opt.Oldest && !oldest.Fd.ModTime.IsZero() && count > 1 {
 		fmt.Fprintln(w, "Oldest found match:")
-		Print(w, oldest.Count, oldest.Path, oldest.Fd)
+		Print(w, true, oldest.Count, oldest.Path, oldest.Fd)
 	}
 	if opt.Newest && !newest.Fd.ModTime.IsZero() && count > 1 {
 		fmt.Fprintln(w, "Newest found match:")
-		Print(w, newest.Count, newest.Path, newest.Fd)
+		Print(w, true, newest.Count, newest.Path, newest.Fd)
 	}
 	return count, nil
 }
@@ -135,7 +135,7 @@ func (opt Config) Match(pattern, filename string, isDir bool) (bool, error) {
 }
 
 // Copier copies the file to the destination directory.
-func (opt Config) Copier(path string) {
+func (opt Config) Copier(w io.Writer, path string) {
 	if opt.Destination == "" || opt.Archive {
 		return
 	}
@@ -143,7 +143,7 @@ func (opt Config) Copier(path string) {
 		dest := filepath.Join(opt.Destination, filepath.Base(path))
 		if err := cp.Copy(path, dest); err != nil {
 			if opt.StdErrors {
-				fmt.Fprintf(os.Stderr, "%s: %v\n", path, err)
+				fmt.Fprintf(w, "%s: %v\n", path, err)
 			}
 			return
 		}
@@ -253,13 +253,14 @@ func TarArchive(path string) bool {
 		return false
 	}
 	defer file.Close()
-	magic := make([]byte, 4)
+	const offset = 257
+	magic := make([]byte, 4+offset)
 	if _, err := file.Read(magic); err != nil {
 		return false
 	}
 	// Check if the magic number matches the TAR file magic number
-	if magic[0] != 0x75 || magic[1] != 0x73 ||
-		magic[2] != 0x74 || magic[3] != 0x61 {
+	if magic[offset+0] != 0x75 || magic[offset+1] != 0x73 ||
+		magic[offset+2] != 0x74 || magic[offset+3] != 0x61 {
 		return false
 	}
 	file.Close()
@@ -346,7 +347,7 @@ func (m *Match) UpdateN(c int, path string, fd Find) {
 }
 
 // Print the match to the writer.
-func Print(w io.Writer, count int, path string, fd Find) {
+func Print(w io.Writer, lastMod bool, count int, path string, fd Find) {
 	if w == nil {
 		w = io.Discard
 	}
@@ -354,7 +355,7 @@ func Print(w io.Writer, count int, path string, fd Find) {
 		fmt.Fprintf(w, "%d\t", count)
 	}
 	fmt.Fprintf(w, "%s", fd.Name)
-	if !fd.ModTime.IsZero() {
+	if lastMod && !fd.ModTime.IsZero() {
 		s := fd.ModTime.Format("2006-01-02")
 		fmt.Fprintf(w, " (%s)", s)
 	}
