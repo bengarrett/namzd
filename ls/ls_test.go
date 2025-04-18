@@ -12,6 +12,7 @@ import (
 )
 
 func TestConfig_Copier(t *testing.T) {
+	t.Parallel()
 	tdir, _ := filepath.Abs(filepath.Join("..", "testdata"))
 	tests := []struct {
 		name         string
@@ -54,6 +55,7 @@ func TestConfig_Copier(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var buf bytes.Buffer
 			tt.opt.StdErrors = true      // Enable standard error output
 			tt.opt.Copier(&buf, tt.path) // copier does not return anything
@@ -67,6 +69,7 @@ func TestConfig_Copier(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) { //nolint:funlen
+	t.Parallel()
 	tdir, _ := filepath.Abs(filepath.Join("..", "testdata"))
 	fmatches := []string{
 		"file_1996", "file_1997.xyz", "file_2002.zyx",
@@ -187,6 +190,7 @@ func TestConfig(t *testing.T) { //nolint:funlen
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			const resetCount = 0
 			var buf bytes.Buffer
 			_, err := tt.opt.Walk(&buf, resetCount, tt.pattern, tt.path)
@@ -204,6 +208,7 @@ func TestConfig(t *testing.T) { //nolint:funlen
 }
 
 func TestConfig_Walk(t *testing.T) {
+	t.Parallel()
 	tdir, _ := filepath.Abs(filepath.Join("..", "testdata"))
 	tests := []struct {
 		name      string
@@ -252,6 +257,7 @@ func TestConfig_Walk(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			const resetCount = 0
 			tt.opt.Count = true      // Enable counting otherwise 0 is always returned
 			tt.opt.StdErrors = false // Disable standard error output
@@ -268,6 +274,7 @@ func TestConfig_Walk(t *testing.T) {
 }
 
 func TestDosEpoch(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		time time.Time
@@ -297,6 +304,7 @@ func TestDosEpoch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := ls.DosEpoch(tt.time); got != tt.want {
 				t.Errorf("DosEpoch() = %v, want %v", got, tt.want)
 			}
@@ -305,6 +313,7 @@ func TestDosEpoch(t *testing.T) {
 }
 
 func TestPrint(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		count int
@@ -354,6 +363,7 @@ func TestPrint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var buf bytes.Buffer
 			ls.Print(&buf, true, tt.count, tt.path, tt.fd)
 			if got := buf.String(); got != tt.want {
@@ -364,6 +374,7 @@ func TestPrint(t *testing.T) {
 }
 
 func TestMatch_Older(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		m    ls.Match
@@ -398,6 +409,7 @@ func TestMatch_Older(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := tt.m.Older(tt.time); got != tt.want {
 				t.Errorf("Match.Older() = %v, want %v", got, tt.want)
 			}
@@ -406,6 +418,7 @@ func TestMatch_Older(t *testing.T) {
 }
 
 func TestMatch_Newer(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		m    ls.Match
@@ -440,6 +453,7 @@ func TestMatch_Newer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := tt.m.Newer(tt.time); got != tt.want {
 				t.Errorf("Match.Newer() = %v, want %v", got, tt.want)
 			}
@@ -448,6 +462,7 @@ func TestMatch_Newer(t *testing.T) {
 }
 
 func TestMatch_UpdateO(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		m     ls.Match
@@ -484,6 +499,7 @@ func TestMatch_UpdateO(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			tt.m.UpdateO(tt.count, tt.path, tt.fd)
 			if tt.m != tt.want {
 				t.Errorf("Match.UpdateO() = %v, want %v", tt.m, tt.want)
@@ -493,6 +509,7 @@ func TestMatch_UpdateO(t *testing.T) {
 }
 
 func TestMatch_UpdateN(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		m     ls.Match
@@ -529,6 +546,7 @@ func TestMatch_UpdateN(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			tt.m.UpdateN(tt.count, tt.path, tt.fd)
 			if tt.m != tt.want {
 				t.Errorf("Match.UpdateN() = %v, want %v", tt.m, tt.want)
@@ -538,6 +556,7 @@ func TestMatch_UpdateN(t *testing.T) {
 }
 
 func TestConfig_Walks(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		config  ls.Config
@@ -579,6 +598,7 @@ func TestConfig_Walks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var buf bytes.Buffer
 			err := tt.config.Walks(&buf, tt.pattern, tt.roots...)
 			if (err != nil) != tt.wantErr {
@@ -589,6 +609,7 @@ func TestConfig_Walks(t *testing.T) {
 }
 
 func TestConfig_Archiver(t *testing.T) {
+	t.Parallel()
 	atar := filepath.Join("..", "testdata", "archive.tar")
 	atxz := filepath.Join("..", "testdata", "archive.tar.xz")
 	azip := filepath.Join("..", "testdata", "archive.zip")
@@ -635,6 +656,7 @@ func TestConfig_Archiver(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			tt.opt.Archive = true
 			path, _ := filepath.Abs(tt.path)
 			finds, err := tt.opt.Archiver(tt.pattern, path)

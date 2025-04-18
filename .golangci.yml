@@ -5,10 +5,7 @@ linters:
     - depguard
     - exhaustruct
     - nlreturn
-    - paralleltest
     - wsl
-    - lll
-    - dupl
   exclusions:
     generated: lax
     presets:
@@ -18,10 +15,13 @@ linters:
       - std-error-handling
     rules:
       - linters:
+          - dupl
+          - lll
           - varnamelen
         path: _test\.go
       - linters:
           - gochecknoglobals
+          - lll
         path: main\.go
 formatters:
   enable:

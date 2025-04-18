@@ -50,9 +50,9 @@ func (opt Config) Walks(w io.Writer, pattern string, roots ...string) error {
 	return nil
 }
 
-// Walk the root directory to match filenames to the pattern and writes the results to the writer.
+// Walk the root directory to match filenames to the pattern and writes the results to the out writer.
 // The counted finds is returned or left at 0 if not counting.
-func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error) {
+func (opt Config) Walk(out io.Writer, count int, pattern, root string) (int, error) { //nolint:gocognit,cyclop
 	conf := fastwalk.Config{
 		Follow:     opt.Follow,
 		Sort:       opt.Sort,
@@ -84,7 +84,7 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 				if opt.Count {
 					count++
 				}
-				Print(w, opt.LastModified, count, path, find)
+				Print(out, opt.LastModified, count, path, find)
 				if opt.Oldest {
 					oldest.UpdateO(count, path, find)
 				}
@@ -102,20 +102,14 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 		if opt.Count {
 			count++
 		}
-		opt.Print(w, count, path)
+		opt.Print(out, count, path)
 		return err
 	}
 	if err := fastwalk.Walk(&conf, root, walkFn); err != nil {
 		return count, fmt.Errorf("fastwalk: %w", err)
 	}
-	if opt.Oldest && !oldest.Fd.ModTime.IsZero() && count > 1 {
-		fmt.Fprintln(w, "Oldest found match:")
-		Print(w, true, oldest.Count, oldest.Path, oldest.Fd)
-	}
-	if opt.Newest && !newest.Fd.ModTime.IsZero() && count > 1 {
-		fmt.Fprintln(w, "Newest found match:")
-		Print(w, true, newest.Count, newest.Path, newest.Fd)
-	}
+	opt.oldest(out, count, oldest)
+	opt.newest(out, count, newest)
 	return count, nil
 }
 
@@ -384,6 +378,22 @@ func (opt Config) Print(dst io.Writer, count int, path string) {
 	}
 	fmt.Fprintf(dst, "%s", path)
 	fmt.Fprintln(dst)
+}
+
+func (opt Config) oldest(w io.Writer, count int, oldest Match) {
+	if !opt.Oldest || count < 2 || oldest.Fd.ModTime.IsZero() {
+		return
+	}
+	fmt.Fprintln(w, "Oldest found match:")
+	Print(w, true, oldest.Count, oldest.Path, oldest.Fd)
+}
+
+func (opt Config) newest(w io.Writer, count int, newest Match) {
+	if !opt.Newest || count < 2 || newest.Fd.ModTime.IsZero() {
+		return
+	}
+	fmt.Fprintln(w, "Newest found match:")
+	Print(w, true, newest.Count, newest.Path, newest.Fd)
 }
 
 // DosEpoch checks if the time is before the MS-DOS epoch.
