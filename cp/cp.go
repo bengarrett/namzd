@@ -10,7 +10,7 @@ import (
 func CheckDest(dir string) error {
 	tmp, err := os.CreateTemp(dir, "namezed_test")
 	if err != nil {
-		return fmt.Errorf("destination directory is not writable: %s", err)
+		return fmt.Errorf("destination directory is not writable: %w", err)
 	}
 	tmp.Close()
 	defer os.Remove(tmp.Name())
@@ -19,29 +19,30 @@ func CheckDest(dir string) error {
 
 // Copy a file from source to destination.
 func Copy(source, destination string) error {
-	st, err := os.Stat(source)
+	info, err := os.Stat(source)
 	if err != nil {
-		return err
+		return fmt.Errorf("copy: %w", err)
 	}
 	src, err := os.Open(source)
 	if err != nil {
-		return err
+		return fmt.Errorf("copy: %w", err)
 	}
 	defer src.Close()
 
 	dst, err := os.Create(destination)
 	if err != nil {
-		return err
+		return fmt.Errorf("copy: %w", err)
 	}
 	defer dst.Close()
 
-	if _, err := io.Copy(dst, src); err != nil {
-		return err
+	const size = 4 * 1024
+	buf := make([]byte, size)
+	if _, err := io.CopyBuffer(dst, src, buf); err != nil {
+		return fmt.Errorf("copy: %w", err)
 	}
 
-	if err := os.Chmod(destination, st.Mode()); err != nil {
-		return err
+	if err := os.Chmod(destination, info.Mode()); err != nil {
+		return fmt.Errorf("copy: %w", err)
 	}
-
-	return dst.Sync()
+	return nil
 }

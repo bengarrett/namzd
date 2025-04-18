@@ -1,9 +1,10 @@
-name: goreleaser
+name: GoReleaser
 
 on:
+  workflow_dispatch:
   push:
     tags:
-      - "*" # run on new tags
+      - "v*"
 
 permissions:
   contents: write
@@ -21,12 +22,8 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
-          # either 'goreleaser' (default) or 'goreleaser-pro'
           distribution: goreleaser
-          # 'latest', 'nightly', or a semver
-          version: "~> v2"
+          version: latest
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Your GoReleaser Pro key, if you are using the 'goreleaser-pro' distribution
-          # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}

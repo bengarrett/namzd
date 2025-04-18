@@ -11,36 +11,36 @@ import (
 )
 
 type Globals struct {
-	Version VersionFlag `name:"version" help:"Show the version information and exit." short:"V"`
+	Version VersionFlag `help:"Show the version information and exit." name:"version" short:"V"`
 }
 
 // VersionFlag is a custom flag type for the display of the version information.
 type VersionFlag string
 
-func (v VersionFlag) Decode(ctx *kong.DecodeContext) error { return nil }
-func (v VersionFlag) IsBool() bool                         { return true }
-func (v VersionFlag) BeforeApply(app *kong.Kong, vars kong.Vars) error {
-	fmt.Println(vars["version"])
+func (v VersionFlag) Decode(_ *kong.DecodeContext) error { return nil }
+func (v VersionFlag) IsBool() bool                       { return true }
+func (v VersionFlag) BeforeApply(app *kong.Kong, vars kong.Vars) error { //nolint:unparam
+	fmt.Fprintln(os.Stdout, vars["version"])
 	app.Exit(0)
 	return nil
 }
 
 // Cmd is the command line options for the ls command.
 type Cmd struct {
-	Archive       bool     `group:"zip" xor:"x0" help:"Archive mode will also search within supported archives for matched filenames." short:"a"`
-	Destination   string   `group:"copy" xor:"x0,x1" help:"Destination directory path to copy matches." type:"existingdir" short:"x"`
-	CaseSensitive bool     `help:"Case sensitive match." short:"c"`
-	Count         bool     `help:"Count the number of matches." short:"n"`
+	Archive       bool     `group:"zip"                                                   help:"Archive mode will also search within supported archives for matched filenames." short:"a"   xor:"x0"`
+	Destination   string   `group:"copy"                                                  help:"Destination directory path to copy matches."                                    short:"x"   type:"existingdir" xor:"x0,x1"`
+	CaseSensitive bool     `help:"Case sensitive match."                                  short:"c"`
+	Count         bool     `help:"Count the number of matches."                           short:"n"`
 	LastModified  bool     `help:"Show the last modified time of the match (yyyy-mm-dd)." short:"m"`
-	Oldest        bool     `help:"Show the oldest file match." short:"o"`
-	Newest        bool     `help:"Show the newest file match." short:"N"`
-	Directory     bool     `xor:"x1" help:"Include directory matches." short:"d" default:"true"`
-	Errors        bool     `group:"errs" help:"Errors mode displays any file and directory read or access errors." short:"e"`
-	Follow        bool     `help:"Follow symbolic links." short:"f"`
-	Panic         bool     `group:"errs" help:"Exits on any errors including file and directory read or access errors." short:"p"`
-	Worker        int      `help:"Number of workers to use or leave it to the app." short:"w" default:"0" hidden:""`
-	Match         string   `arg:"" required:"" help:"Filename, extension or pattern to match."`
-	Paths         []string `arg:"" required:"" help:"Paths to lookup." type:"existingdir"`
+	Oldest        bool     `help:"Show the oldest file match."                            short:"o"`
+	Newest        bool     `help:"Show the newest file match."                            short:"N"`
+	Directory     bool     `default:"true"                                                help:"Include directory matches."                                                     short:"d"   xor:"x1"`
+	Errors        bool     `group:"errs"                                                  help:"Errors mode displays any file and directory read or access errors."             short:"e"`
+	Follow        bool     `help:"Follow symbolic links."                                 short:"f"`
+	Panic         bool     `group:"errs"                                                  help:"Exits on any errors including file and directory read or access errors."        short:"p"`
+	Worker        int      `default:"0"                                                   help:"Number of workers to use or leave it to the app."                               hidden:""   short:"w"`
+	Match         string   `arg:""                                                        help:"Filename, extension or pattern to match."                                       required:""`
+	Paths         []string `arg:""                                                        help:"Paths to lookup."                                                               required:"" type:"existingdir"`
 }
 
 // Run the ls command.
@@ -61,14 +61,16 @@ func (cmd *Cmd) Run() error {
 		Sort:          fastwalk.SortDirsFirst,
 	}
 	if err := cp.CheckDest(opt.Destination); err != nil {
-		return err
+		return fmt.Errorf("run ls: %w", err)
 	}
-
-	return opt.Walks(os.Stdout, cmd.Match, cmd.Paths...)
+	if err := opt.Walks(os.Stdout, cmd.Match, cmd.Paths...); err != nil {
+		return fmt.Errorf("run ls: %w", err)
+	}
+	return nil
 }
 
 func help() string {
-	s := `
+	help := `
 
 A <match> query is a filename, extension or pattern to match.
 These are case-insensitive by default and should be quoted:
@@ -78,7 +80,7 @@ These are case-insensitive by default and should be quoted:
 	'*.txt' matches readme.txt, File.txt, DOC.TXT, etc.
 	'*.tar*' matches files.tar.gz, FILE.tarball, files.tar, files.tar.xz, etc.
 	'*.tar.??' matches files.tar.gz, files.tar.xz, etc.`
-	return s
+	return help
 }
 
 type CLI struct {

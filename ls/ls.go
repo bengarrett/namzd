@@ -44,7 +44,7 @@ func (opt Config) Walks(w io.Writer, pattern string, roots ...string) error {
 			if opt.Panic {
 				os.Exit(1)
 			}
-			return err
+			return fmt.Errorf("walks: %w", err)
 		}
 	}
 	return nil
@@ -59,10 +59,10 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 		NumWorkers: opt.NumWorkers,
 	}
 	oldest, newest := Match{}, Match{}
-	walkFn := func(path string, d fs.DirEntry, err error) error {
+	walkFn := func(path string, dir fs.DirEntry, err error) error {
 		if err != nil {
 			if opt.Panic {
-				return err
+				return fmt.Errorf("walk: %w", err)
 			}
 			if opt.StdErrors {
 				fmt.Fprintf(os.Stderr, "%s: %v\n", path, err)
@@ -72,7 +72,7 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 		finds, err := opt.Archiver(pattern, path)
 		if err != nil {
 			if opt.Panic {
-				return err
+				return fmt.Errorf("walk: %w", err)
 			}
 			if opt.StdErrors {
 				fmt.Fprintf(os.Stderr, "%s: %v\n", path, err)
@@ -80,25 +80,25 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 			return nil
 		}
 		if len(finds) > 0 {
-			for _, fd := range finds {
+			for _, find := range finds {
 				if opt.Count {
 					count++
 				}
-				Print(w, opt.LastModified, count, path, fd)
+				Print(w, opt.LastModified, count, path, find)
 				if opt.Oldest {
-					oldest.UpdateO(count, path, fd)
+					oldest.UpdateO(count, path, find)
 				}
 				if opt.Newest {
-					newest.UpdateN(count, path, fd)
+					newest.UpdateN(count, path, find)
 				}
 			}
 			return nil
 		}
-		if match, err := opt.Match(pattern, d.Name(), d.IsDir()); !match {
+		if match, err := opt.Match(pattern, dir.Name(), dir.IsDir()); !match {
 			return err
 		}
 		opt.Copier(os.Stderr, path)
-		opt.Update(d, count, path, &oldest, &newest)
+		opt.Update(dir, count, path, &oldest, &newest)
 		if opt.Count {
 			count++
 		}
@@ -106,7 +106,7 @@ func (opt Config) Walk(w io.Writer, count int, pattern, root string) (int, error
 		return err
 	}
 	if err := fastwalk.Walk(&conf, root, walkFn); err != nil {
-		return count, err
+		return count, fmt.Errorf("fastwalk: %w", err)
 	}
 	if opt.Oldest && !oldest.Fd.ModTime.IsZero() && count > 1 {
 		fmt.Fprintln(w, "Oldest found match:")
@@ -129,11 +129,16 @@ func (opt Config) Match(pattern, filename string, isDir bool) (bool, error) {
 		pattern = strings.ToLower(pattern)
 		name = strings.ToLower(name)
 	}
-	return filepath.Match(pattern, name)
+	ok, err := filepath.Match(pattern, name)
+	if err != nil {
+		return false, fmt.Errorf("match: %w", err)
+	}
+	return ok, nil
 }
 
-// Copier copies the file to the destination directory.
-func (opt Config) Copier(w io.Writer, path string) {
+// Copier copies the file to the destination directory path.
+// The out writer is used to print the errors.
+func (opt Config) Copier(out io.Writer, path string) {
 	if opt.Destination == "" || opt.Archive {
 		return
 	}
@@ -141,7 +146,7 @@ func (opt Config) Copier(w io.Writer, path string) {
 		dest := filepath.Join(opt.Destination, filepath.Base(path))
 		if err := cp.Copy(path, dest); err != nil {
 			if opt.StdErrors {
-				fmt.Fprintf(w, "%s: %v\n", path, err)
+				fmt.Fprintf(out, "%s: %v\n", path, err)
 			}
 			return
 		}
@@ -150,26 +155,26 @@ func (opt Config) Copier(w io.Writer, path string) {
 
 // Update the oldest and newest matches with the count, filename, path and file info.
 // If the oldest and newest flags are not set or there is an error, the function exits.
-func (opt Config) Update(d fs.DirEntry, count int, path string, oldest, newest *Match) {
+func (opt Config) Update(dir fs.DirEntry, count int, path string, oldest, newest *Match) {
 	if !opt.Oldest && !opt.Newest {
 		return
 	}
 	if oldest == nil || newest == nil {
 		return
 	}
-	info, err := d.Info()
+	info, err := dir.Info()
 	if err != nil {
 		return
 	}
 	if opt.Oldest {
 		oldest.UpdateO(count, path, Find{
-			Name:    d.Name(),
+			Name:    dir.Name(),
 			ModTime: info.ModTime(),
 		})
 	}
 	if opt.Newest {
 		newest.UpdateN(count, path, Find{
-			Name:    d.Name(),
+			Name:    dir.Name(),
 			ModTime: info.ModTime(),
 		})
 	}
@@ -199,25 +204,25 @@ func (opt Config) Archiver(pattern, path string) ([]Find, error) {
 func (opt Config) Tars(pattern, path string) ([]Find, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("tars: %w", err)
 	}
 	defer file.Close()
 	tr := tar.NewReader(file)
 	finds := []Find{}
 	for {
-		th, err := tr.Next()
+		header, err := tr.Next()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("tars: %w", err)
 		}
-		if match, _ := opt.Match(pattern, th.Name, th.FileInfo().IsDir()); !match {
+		if match, _ := opt.Match(pattern, header.Name, header.FileInfo().IsDir()); !match {
 			continue
 		}
 		finds = append(finds, Find{
-			Name:    th.Name,
-			ModTime: th.ModTime,
+			Name:    header.Name,
+			ModTime: header.ModTime,
 		})
 	}
 	return finds, nil
@@ -225,20 +230,20 @@ func (opt Config) Tars(pattern, path string) ([]Find, error) {
 
 // Zips reads the index of the zip archive and returns the matched filenames to the pattern.
 func (opt Config) Zips(pattern, path string) ([]Find, error) {
-	r, err := zip.OpenReader(path)
+	zipper, err := zip.OpenReader(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("zips: %w", err)
 	}
-	defer r.Close()
+	defer zipper.Close()
 	finds := []Find{}
-	for _, f := range r.File {
-		fi := f.FileInfo()
-		if match, _ := opt.Match(pattern, f.Name, fi.IsDir()); !match {
+	for _, file := range zipper.File {
+		info := file.FileInfo()
+		if match, _ := opt.Match(pattern, file.Name, info.IsDir()); !match {
 			continue
 		}
 		finds = append(finds, Find{
-			Name:    f.Name,
-			ModTime: f.Modified,
+			Name:    file.Name,
+			ModTime: file.Modified,
 		})
 	}
 	return finds, nil
@@ -251,8 +256,8 @@ func TarArchive(path string) bool {
 		return false
 	}
 	defer file.Close()
-	const offset = 257
-	magic := make([]byte, 4+offset)
+	const size, offset = 4, 257
+	magic := make([]byte, size+offset)
 	if _, err := file.Read(magic); err != nil {
 		return false
 	}
@@ -272,7 +277,8 @@ func ZipArchive(path string) bool {
 		return false
 	}
 	defer file.Close()
-	magic := make([]byte, 4)
+	const size = 4
+	magic := make([]byte, size)
 	if _, err := file.Read(magic); err != nil {
 		return false
 	}
@@ -293,92 +299,91 @@ type Match struct {
 	Fd    Find   // Find of the matched file.
 }
 
-// Older checks if the time is older than the match.
-func (m Match) Older(t time.Time) bool {
-	if DosEpoch(t) {
+// Older compares the time is older than the match.
+func (m *Match) Older(cmp time.Time) bool {
+	if DosEpoch(cmp) {
 		return false
 	}
 	if m.Fd.ModTime.IsZero() {
 		return true
 	}
-	return t.Before(m.Fd.ModTime)
+	return cmp.Before(m.Fd.ModTime)
 }
 
-// Newer checks if the time is newer than the match.
-func (m Match) Newer(t time.Time) bool {
-	if DosEpoch(t) {
+// Newer compares the time is newer than the match.
+func (m *Match) Newer(cmp time.Time) bool {
+	if DosEpoch(cmp) {
 		return false
 	}
 	if m.Fd.ModTime.IsZero() {
 		return true
 	}
-	return t.After(m.Fd.ModTime)
+	return cmp.After(m.Fd.ModTime)
 }
 
 // UpdateO the match with the count, filename, path and file info if the modtime is older.
-func (m *Match) UpdateO(c int, path string, fd Find) {
-
-	if fd.ModTime.IsZero() || fd.Name == "" {
+func (m *Match) UpdateO(count int, path string, find Find) {
+	if find.ModTime.IsZero() || find.Name == "" {
 		return
 	}
-	t := fd.ModTime
+	t := find.ModTime
 	if !m.Older(t) {
 		return
 	}
-	m.Count = c
+	m.Count = count
 	m.Path = path
-	m.Fd = fd
+	m.Fd = find
 }
 
 // Update the match with the count, filename, path and file info if the modtime is newer.
-func (m *Match) UpdateN(c int, path string, fd Find) {
-	if fd.ModTime.IsZero() || fd.Name == "" {
+func (m *Match) UpdateN(count int, path string, find Find) {
+	if find.ModTime.IsZero() || find.Name == "" {
 		return
 	}
-	t := fd.ModTime
+	t := find.ModTime
 	if !m.Newer(t) {
 		return
 	}
-	m.Count = c
+	m.Count = count
 	m.Path = path
-	m.Fd = fd
+	m.Fd = find
 }
 
 // Print the matched find to the writer.
-func Print(w io.Writer, lastMod bool, count int, path string, fd Find) {
-	if w == nil {
-		w = io.Discard
+func Print(dst io.Writer, lastMod bool, count int, path string, find Find) {
+	if dst == nil {
+		dst = io.Discard
 	}
 	if count > 0 {
-		fmt.Fprintf(w, "%d\t", count)
+		fmt.Fprintf(dst, "%d\t", count)
 	}
-	fmt.Fprintf(w, "%s", fd.Name)
-	if lastMod && !fd.ModTime.IsZero() {
-		s := fd.ModTime.Format("2006-01-02")
-		fmt.Fprintf(w, " (%s)", s)
+	fmt.Fprintf(dst, "%s", find.Name)
+	if lastMod && !find.ModTime.IsZero() {
+		s := find.ModTime.Format("2006-01-02")
+		fmt.Fprintf(dst, " (%s)", s)
 	}
-	fmt.Fprintf(w, " > %s\n", path)
+	fmt.Fprintf(dst, " > %s\n", path)
 }
 
 // Print the matched path to the writer.
-func (opt Config) Print(w io.Writer, count int, path string) {
-	if w == nil {
-		w = io.Discard
+func (opt Config) Print(dst io.Writer, count int, path string) {
+	if dst == nil {
+		dst = io.Discard
 	}
 	if count > 0 {
-		fmt.Fprintf(w, "%d\t", count)
+		fmt.Fprintf(dst, "%d\t", count)
 	}
 	if opt.LastModified {
 		fi, err := os.Stat(path)
 		if err != nil {
-			fmt.Fprintln(w)
+			fmt.Fprintln(dst)
 			return
 		}
 		s := fi.ModTime().Format("2006-01-02")
-		fmt.Fprintf(w, "(%s) ", s)
+		fmt.Fprintf(dst, "(%s) ", s)
 	}
-	fmt.Fprintf(w, "%s", path)
-	fmt.Fprintln(w)
+	fmt.Fprintf(dst, "%s", path)
+	fmt.Fprintln(dst)
 }
 
 // DosEpoch checks if the time is before the MS-DOS epoch.

@@ -1,13 +1,14 @@
-package ls
+package ls_test
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/bengarrett/namzd/ls"
 )
 
 func TestConfig_Copier(t *testing.T) {
@@ -15,13 +16,13 @@ func TestConfig_Copier(t *testing.T) {
 	tests := []struct {
 		name         string
 		path         string
-		opt          Config
+		opt          ls.Config
 		wantContains []string
 	}{
 		{
 			name: "Invalid path",
 			path: "invalid_path",
-			opt: Config{
+			opt: ls.Config{
 				Destination: t.TempDir(),
 			},
 			wantContains: []string{"no such file or directory"},
@@ -29,7 +30,7 @@ func TestConfig_Copier(t *testing.T) {
 		{
 			name: "Invalid drestination",
 			path: tdir,
-			opt: Config{
+			opt: ls.Config{
 				Destination: "invalid_destionation",
 			},
 			wantContains: []string{"no such file or directory"},
@@ -37,7 +38,7 @@ func TestConfig_Copier(t *testing.T) {
 		{
 			name: "Copy a directory",
 			path: tdir,
-			opt: Config{
+			opt: ls.Config{
 				Destination: t.TempDir(),
 			},
 			wantContains: []string{"is a directory"},
@@ -45,7 +46,7 @@ func TestConfig_Copier(t *testing.T) {
 		{
 			name: "Copy a file",
 			path: filepath.Join(tdir, "archive.tar"),
-			opt: Config{
+			opt: ls.Config{
 				Destination: t.TempDir(),
 			},
 			wantContains: []string{""},
@@ -65,15 +66,17 @@ func TestConfig_Copier(t *testing.T) {
 	}
 }
 
-func TestConfig(t *testing.T) {
+func TestConfig(t *testing.T) { //nolint:funlen
 	tdir, _ := filepath.Abs(filepath.Join("..", "testdata"))
-	fmatches := []string{"file_1996", "file_1997.xyz", "file_2002.zyx",
-		"archive.tar.xz", "archive.zip", "archive.tar"}
+	fmatches := []string{
+		"file_1996", "file_1997.xyz", "file_2002.zyx",
+		"archive.tar.xz", "archive.zip", "archive.tar",
+	}
 	tests := []struct {
 		name         string
 		pattern      string
 		path         string
-		opt          Config
+		opt          ls.Config
 		wantContains []string
 		wantErr      bool
 	}{
@@ -81,7 +84,7 @@ func TestConfig(t *testing.T) {
 			name:    "Invalid directory",
 			pattern: "*",
 			path:    "/invalid_path",
-			opt: Config{
+			opt: ls.Config{
 				StdErrors: true,
 				Panic:     true,
 			},
@@ -92,7 +95,7 @@ func TestConfig(t *testing.T) {
 			name:         "A directory",
 			pattern:      "*",
 			path:         tdir,
-			opt:          Config{},
+			opt:          ls.Config{},
 			wantContains: fmatches,
 			wantErr:      false,
 		},
@@ -100,7 +103,7 @@ func TestConfig(t *testing.T) {
 			name:    "Directory and archives",
 			pattern: "*",
 			path:    tdir,
-			opt: Config{
+			opt: ls.Config{
 				Archive: true,
 			},
 			wantContains: []string{"file_1985 > ", "file_2012.txt > "},
@@ -110,65 +113,75 @@ func TestConfig(t *testing.T) {
 			name:    "Directory and archives plus display modtime",
 			pattern: "*",
 			path:    tdir,
-			opt: Config{
+			opt: ls.Config{
 				Archive:      true,
 				LastModified: true,
 			},
-			wantContains: []string{"file_1985 (1985-01-01) > ",
-				"file_2012.txt (2012-01-01) > "},
+			wantContains: []string{
+				"file_1985 (1985-01-01) > ",
+				"file_2012.txt (2012-01-01) > ",
+			},
 			wantErr: false,
 		},
 		{
 			name:    "Directory and archives plus display count, modtime",
 			pattern: "*",
 			path:    tdir,
-			opt: Config{
+			opt: ls.Config{
 				Archive:      true,
 				Count:        true,
 				LastModified: true,
 			},
-			wantContains: []string{"5	file_1985 (1985-01-01) > ",
-				"6	file_2012.txt (2012-01-01) > "},
+			wantContains: []string{
+				"5	file_1985 (1985-01-01) > ",
+				"6	file_2012.txt (2012-01-01) > ",
+			},
 			wantErr: false,
 		},
 		{
 			name:    "Directories files and archives plus display count modtime",
 			pattern: "*",
 			path:    tdir,
-			opt: Config{
+			opt: ls.Config{
 				Archive:      true,
 				Count:        true,
 				Directory:    true,
 				LastModified: true,
 			},
-			wantContains: []string{"6	file_1985 (1985-01-01) > ",
-				"7	file_2012.txt (2012-01-01) > "},
+			wantContains: []string{
+				"6	file_1985 (1985-01-01) > ",
+				"7	file_2012.txt (2012-01-01) > ",
+			},
 			wantErr: false,
 		},
 		{
 			name:    "Oldest",
 			pattern: "*",
 			path:    tdir,
-			opt: Config{
+			opt: ls.Config{
 				Archive: true,
 				Count:   true,
 				Oldest:  true,
 			},
-			wantContains: []string{"Oldest found match:",
-				"5	file_1985 (1985-01-01) > "},
+			wantContains: []string{
+				"Oldest found match:",
+				"5	file_1985 (1985-01-01) > ",
+			},
 			wantErr: false,
 		},
 		{
 			name:    "Newest",
 			pattern: "*",
 			path:    tdir,
-			opt: Config{
+			opt: ls.Config{
 				Archive: true,
 				Count:   true,
 				Newest:  true,
 			},
-			wantContains: []string{"Newest found match:",
-				"3	archive.tar.xz (2025-02-08) >"},
+			wantContains: []string{
+				"Newest found match:",
+				"3	archive.tar.xz (2025-02-08) >",
+			},
 			wantErr: false,
 		},
 	}
@@ -196,7 +209,7 @@ func TestConfig_Walk(t *testing.T) {
 		name      string
 		pattern   string
 		path      string
-		opt       Config
+		opt       ls.Config
 		wantFinds int
 		wantErr   bool
 	}{
@@ -204,7 +217,7 @@ func TestConfig_Walk(t *testing.T) {
 			name:      "Invalid path",
 			pattern:   "*",
 			path:      "invalid_path",
-			opt:       Config{},
+			opt:       ls.Config{},
 			wantFinds: 0,
 			wantErr:   true,
 		},
@@ -212,7 +225,7 @@ func TestConfig_Walk(t *testing.T) {
 			name:      "Search within a directory",
 			pattern:   "*",
 			path:      tdir,
-			opt:       Config{},
+			opt:       ls.Config{},
 			wantFinds: 6,
 			wantErr:   false,
 		},
@@ -220,7 +233,7 @@ func TestConfig_Walk(t *testing.T) {
 			name:    "Search within a directory and archives",
 			pattern: "file_*",
 			path:    tdir,
-			opt: Config{
+			opt: ls.Config{
 				Archive: true,
 			},
 			wantFinds: 5, // 3 files in the directory and 2 in the archives
@@ -230,7 +243,7 @@ func TestConfig_Walk(t *testing.T) {
 			name:    "Match files and directories",
 			pattern: "*",
 			path:    tdir,
-			opt: Config{
+			opt: ls.Config{
 				Directory: true,
 			},
 			wantFinds: 8,
@@ -242,7 +255,6 @@ func TestConfig_Walk(t *testing.T) {
 			const resetCount = 0
 			tt.opt.Count = true      // Enable counting otherwise 0 is always returned
 			tt.opt.StdErrors = false // Disable standard error output
-			fmt.Println(tt.path)
 			count, err := tt.opt.Walk(io.Discard, resetCount, tt.pattern, tt.path)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Config.Walk() error = %v, wantErr %v", err, tt.wantErr)
@@ -285,7 +297,7 @@ func TestDosEpoch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DosEpoch(tt.time); got != tt.want {
+			if got := ls.DosEpoch(tt.time); got != tt.want {
 				t.Errorf("DosEpoch() = %v, want %v", got, tt.want)
 			}
 		})
@@ -297,14 +309,14 @@ func TestPrint(t *testing.T) {
 		name  string
 		count int
 		path  string
-		fd    Find
+		fd    ls.Find
 		want  string
 	}{
 		{
 			name:  "Print with count and mod time",
 			count: 1,
 			path:  "/path/to/file",
-			fd: Find{
+			fd: ls.Find{
 				Name:    "file.txt",
 				ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC),
 			},
@@ -314,7 +326,7 @@ func TestPrint(t *testing.T) {
 			name:  "Print without count and with mod time",
 			count: 0,
 			path:  "/path/to/file",
-			fd: Find{
+			fd: ls.Find{
 				Name:    "file.txt",
 				ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC),
 			},
@@ -324,7 +336,7 @@ func TestPrint(t *testing.T) {
 			name:  "Print with count and without mod time",
 			count: 1,
 			path:  "/path/to/file",
-			fd: Find{
+			fd: ls.Find{
 				Name: "file.txt",
 			},
 			want: "1\tfile.txt > /path/to/file\n",
@@ -333,7 +345,7 @@ func TestPrint(t *testing.T) {
 			name:  "Print without count and mod time",
 			count: 0,
 			path:  "/path/to/file",
-			fd: Find{
+			fd: ls.Find{
 				Name: "file.txt",
 			},
 			want: "file.txt > /path/to/file\n",
@@ -343,7 +355,7 @@ func TestPrint(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			Print(&buf, true, tt.count, tt.path, tt.fd)
+			ls.Print(&buf, true, tt.count, tt.path, tt.fd)
 			if got := buf.String(); got != tt.want {
 				t.Errorf("Print() = %v, want %v", got, tt.want)
 			}
@@ -354,31 +366,31 @@ func TestPrint(t *testing.T) {
 func TestMatch_Older(t *testing.T) {
 	tests := []struct {
 		name string
-		m    Match
+		m    ls.Match
 		time time.Time
 		want bool
 	}{
 		{
 			name: "Older time",
-			m:    Match{Fd: Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:    ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			time: time.Date(2022, 10, 1, 0, 0, 0, 0, time.UTC),
 			want: true,
 		},
 		{
 			name: "Newer time",
-			m:    Match{Fd: Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:    ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			time: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
 			want: false,
 		},
 		{
 			name: "Zero mod time",
-			m:    Match{Fd: Find{ModTime: time.Time{}}},
+			m:    ls.Match{Fd: ls.Find{ModTime: time.Time{}}},
 			time: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC),
 			want: true,
 		},
 		{
 			name: "DOS epoch time",
-			m:    Match{Fd: Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:    ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			time: time.Date(1979, 12, 31, 23, 59, 59, 0, time.UTC),
 			want: false,
 		},
@@ -396,31 +408,31 @@ func TestMatch_Older(t *testing.T) {
 func TestMatch_Newer(t *testing.T) {
 	tests := []struct {
 		name string
-		m    Match
+		m    ls.Match
 		time time.Time
 		want bool
 	}{
 		{
 			name: "Newer time",
-			m:    Match{Fd: Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:    ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			time: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
 			want: true,
 		},
 		{
 			name: "Older time",
-			m:    Match{Fd: Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:    ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			time: time.Date(2022, 10, 1, 0, 0, 0, 0, time.UTC),
 			want: false,
 		},
 		{
 			name: "Zero mod time",
-			m:    Match{Fd: Find{ModTime: time.Time{}}},
+			m:    ls.Match{Fd: ls.Find{ModTime: time.Time{}}},
 			time: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC),
 			want: true,
 		},
 		{
 			name: "DOS epoch time",
-			m:    Match{Fd: Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:    ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			time: time.Date(1979, 12, 31, 23, 59, 59, 0, time.UTC),
 			want: false,
 		},
@@ -438,35 +450,35 @@ func TestMatch_Newer(t *testing.T) {
 func TestMatch_UpdateO(t *testing.T) {
 	tests := []struct {
 		name  string
-		m     Match
+		m     ls.Match
 		count int
 		path  string
-		fd    Find
-		want  Match
+		fd    ls.Find
+		want  ls.Match
 	}{
 		{
 			name:  "Update older match",
-			m:     Match{Fd: Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:     ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			count: 1,
 			path:  "/path/to/file",
-			fd:    Find{Name: "file.txt", ModTime: time.Date(2022, 10, 1, 0, 0, 0, 0, time.UTC)},
-			want:  Match{Count: 1, Path: "/path/to/file", Fd: Find{Name: "file.txt", ModTime: time.Date(2022, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			fd:    ls.Find{Name: "file.txt", ModTime: time.Date(2022, 10, 1, 0, 0, 0, 0, time.UTC)},
+			want:  ls.Match{Count: 1, Path: "/path/to/file", Fd: ls.Find{Name: "file.txt", ModTime: time.Date(2022, 10, 1, 0, 0, 0, 0, time.UTC)}},
 		},
 		{
 			name:  "Do not update newer match",
-			m:     Match{Fd: Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:     ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			count: 1,
 			path:  "/path/to/file",
-			fd:    Find{Name: "file.txt", ModTime: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC)},
-			want:  Match{Fd: Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			fd:    ls.Find{Name: "file.txt", ModTime: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC)},
+			want:  ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 		},
 		{
 			name:  "Do not update with zero mod time",
-			m:     Match{Fd: Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:     ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			count: 1,
 			path:  "/path/to/file",
-			fd:    Find{Name: "file.txt", ModTime: time.Time{}},
-			want:  Match{Fd: Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			fd:    ls.Find{Name: "file.txt", ModTime: time.Time{}},
+			want:  ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 		},
 	}
 
@@ -483,35 +495,35 @@ func TestMatch_UpdateO(t *testing.T) {
 func TestMatch_UpdateN(t *testing.T) {
 	tests := []struct {
 		name  string
-		m     Match
+		m     ls.Match
 		count int
 		path  string
-		fd    Find
-		want  Match
+		fd    ls.Find
+		want  ls.Match
 	}{
 		{
 			name:  "Update newer match",
-			m:     Match{Fd: Find{ModTime: time.Date(2022, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:     ls.Match{Fd: ls.Find{ModTime: time.Date(2022, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			count: 1,
 			path:  "/path/to/file",
-			fd:    Find{Name: "file.txt", ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)},
-			want:  Match{Count: 1, Path: "/path/to/file", Fd: Find{Name: "file.txt", ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			fd:    ls.Find{Name: "file.txt", ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)},
+			want:  ls.Match{Count: 1, Path: "/path/to/file", Fd: ls.Find{Name: "file.txt", ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 		},
 		{
 			name:  "Do not update older match",
-			m:     Match{Fd: Find{ModTime: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:     ls.Match{Fd: ls.Find{ModTime: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			count: 1,
 			path:  "/path/to/file",
-			fd:    Find{Name: "file.txt", ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)},
-			want:  Match{Fd: Find{ModTime: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			fd:    ls.Find{Name: "file.txt", ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)},
+			want:  ls.Match{Fd: ls.Find{ModTime: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC)}},
 		},
 		{
 			name:  "Do not update with zero mod time",
-			m:     Match{Fd: Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:     ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			count: 1,
 			path:  "/path/to/file",
-			fd:    Find{Name: "file.txt", ModTime: time.Time{}},
-			want:  Match{Fd: Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			fd:    ls.Find{Name: "file.txt", ModTime: time.Time{}},
+			want:  ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 		},
 	}
 
@@ -528,14 +540,14 @@ func TestMatch_UpdateN(t *testing.T) {
 func TestConfig_Walks(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  Config
+		config  ls.Config
 		pattern string
 		roots   []string
 		wantErr bool
 	}{
 		{
 			name: "Single root, no error",
-			config: Config{
+			config: ls.Config{
 				StdErrors: false,
 				Panic:     false,
 			},
@@ -545,7 +557,7 @@ func TestConfig_Walks(t *testing.T) {
 		},
 		{
 			name: "Multiple roots, no error",
-			config: Config{
+			config: ls.Config{
 				StdErrors: false,
 				Panic:     false,
 			},
@@ -555,7 +567,7 @@ func TestConfig_Walks(t *testing.T) {
 		},
 		{
 			name: "Single root, with error",
-			config: Config{
+			config: ls.Config{
 				StdErrors: false,
 				Panic:     false,
 			},
@@ -584,7 +596,7 @@ func TestConfig_Archiver(t *testing.T) {
 		name      string
 		pattern   string
 		path      string
-		opt       Config
+		opt       ls.Config
 		wantFinds int
 		wantErr   bool
 	}{
@@ -592,7 +604,7 @@ func TestConfig_Archiver(t *testing.T) {
 			name:      "Invalid path",
 			pattern:   "*",
 			path:      "invalid_path",
-			opt:       Config{},
+			opt:       ls.Config{},
 			wantFinds: 0,
 			wantErr:   false,
 		},
@@ -600,7 +612,7 @@ func TestConfig_Archiver(t *testing.T) {
 			name:      "Search within an uncompress TAR archive",
 			pattern:   "file_2012*",
 			path:      atar,
-			opt:       Config{},
+			opt:       ls.Config{},
 			wantFinds: 1,
 			wantErr:   false,
 		},
@@ -608,7 +620,7 @@ func TestConfig_Archiver(t *testing.T) {
 			name:      "Search within a compress TAR.XZ archive",
 			pattern:   "file_2012*",
 			path:      atxz,
-			opt:       Config{},
+			opt:       ls.Config{},
 			wantFinds: 0,
 			wantErr:   false,
 		},
@@ -616,7 +628,7 @@ func TestConfig_Archiver(t *testing.T) {
 			name:      "Search within an compress ZIP archive",
 			pattern:   "file_1985*",
 			path:      azip,
-			opt:       Config{},
+			opt:       ls.Config{},
 			wantFinds: 1,
 			wantErr:   false,
 		},
@@ -625,7 +637,6 @@ func TestConfig_Archiver(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.opt.Archive = true
 			path, _ := filepath.Abs(tt.path)
-			fmt.Println(path)
 			finds, err := tt.opt.Archiver(tt.pattern, path)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Config.Archiver() error = %v, wantErr %v", err, tt.wantErr)
