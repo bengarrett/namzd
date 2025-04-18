@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bengarrett/namzd/cp"
@@ -130,21 +131,21 @@ func (opt Config) Match(pattern, filename string, isDir bool) (bool, error) {
 	return ok, nil
 }
 
+var copierMu sync.Mutex
+
 // Copier copies the file to the destination directory path.
 // The out writer is used to print the errors.
 func (opt Config) Copier(out io.Writer, path string) {
 	if opt.Destination == "" || opt.Archive {
 		return
 	}
-	defer func() {
-		dest := filepath.Join(opt.Destination, filepath.Base(path))
-		if err := cp.Copy(path, dest); err != nil {
-			if opt.StdErrors {
-				fmt.Fprintf(out, "%s: %v\n", path, err)
-			}
-			return
-		}
-	}()
+	dest := filepath.Join(opt.Destination, filepath.Base(path))
+	err := cp.Copy(path, dest)
+	if err != nil && opt.StdErrors {
+		copierMu.Lock()
+		fmt.Fprintf(out, "%s: %v\n", path, err)
+		copierMu.Unlock()
+	}
 }
 
 // Update the oldest and newest matches with the count, filename, path and file info.
@@ -344,40 +345,39 @@ func (m *Match) UpdateN(count int, path string, find Find) {
 }
 
 // Print the matched find to the writer.
-func Print(dst io.Writer, lastMod bool, count int, path string, find Find) {
-	if dst == nil {
-		dst = io.Discard
+func Print(out io.Writer, lastMod bool, count int, path string, find Find) {
+	if out == nil {
+		out = io.Discard
 	}
 	if count > 0 {
-		fmt.Fprintf(dst, "%d\t", count)
+		fmt.Fprintf(out, "%d\t", count)
 	}
-	fmt.Fprintf(dst, "%s", find.Name)
+	fmt.Fprint(out, find.Name)
 	if lastMod && !find.ModTime.IsZero() {
 		s := find.ModTime.Format("2006-01-02")
-		fmt.Fprintf(dst, " (%s)", s)
+		fmt.Fprintf(out, " (%s)", s)
 	}
-	fmt.Fprintf(dst, " > %s\n", path)
+	fmt.Fprint(out, " > "+path+"\n")
 }
 
-// Print the matched path to the writer.
-func (opt Config) Print(dst io.Writer, count int, path string) {
-	if dst == nil {
-		dst = io.Discard
+// Print the matched path to the out writer.
+func (opt Config) Print(out io.Writer, count int, path string) {
+	if out == nil {
+		out = io.Discard
 	}
 	if count > 0 {
-		fmt.Fprintf(dst, "%d\t", count)
+		fmt.Fprintf(out, "%d\t", count)
 	}
 	if opt.LastModified {
 		fi, err := os.Stat(path)
 		if err != nil {
-			fmt.Fprintln(dst)
+			fmt.Fprintln(out)
 			return
 		}
 		s := fi.ModTime().Format("2006-01-02")
-		fmt.Fprintf(dst, "(%s) ", s)
+		fmt.Fprintf(out, "(%s) ", s)
 	}
-	fmt.Fprintf(dst, "%s", path)
-	fmt.Fprintln(dst)
+	fmt.Fprint(out, path+"\n")
 }
 
 func (opt Config) oldest(w io.Writer, count int, oldest Match) {

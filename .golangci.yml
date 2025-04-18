@@ -2,7 +2,6 @@ version: "2"
 linters:
   default: all
   disable:
-    - depguard
     - exhaustruct
     - nlreturn
     - wsl
@@ -23,6 +22,16 @@ linters:
           - gochecknoglobals
           - lll
         path: main\.go
+  settings:
+    depguard:
+      rules:
+        main:
+          allow:
+            - $gostd
+            - github.com/bengarrett/namzd/cp
+            - github.com/bengarrett/namzd/ls
+            - github.com/alecthomas/kong
+            - github.com/charlievieth/fastwalk
 formatters:
   enable:
     - gci
