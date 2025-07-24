@@ -4,7 +4,9 @@ linters:
   disable:
     - exhaustruct
     - nlreturn
+    - noinlineerr
     - wsl
+    - wsl_v5
   exclusions:
     generated: lax
     presets:
