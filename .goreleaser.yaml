@@ -39,8 +39,8 @@ archives:
         formats: ['zip']
 nfpms:
   - id: Linux
-    package_name: "retrotxt"
-    file_name_template: "retrotxt"
+    package_name: "namzd"
+    file_name_template: "namzd"
     vendor: Ben Garrett.
     homepage: https://retrotxt.com/go
     maintainer: Ben Garrett <code.by.ben@gmail.com>
