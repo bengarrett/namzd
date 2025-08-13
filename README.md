@@ -2,7 +2,32 @@
 
 ### Quickly find files by name or extension.
 
-[Download for Windows, macOS and Linux](https://github.com/bengarrett/namzd/releases).
+#### Downloads
+
+[Download releases](https://github.com/bengarrett/namzd/releases) for 
+[Windows](https://github.com/bengarrett/namzd/releases/latest/download/namzd_windows.zip), 
+[Apple](https://github.com/bengarrett/namzd/releases/latest/download/namzd_apple_silicon.tgz) and 
+[Linux](https://github.com/bengarrett/namzd/releases/latest/download/namzd_linux.tgz).
+
+The download is a compressed binary that is standalone terminal application. 
+Windows users can use File Explorer to decompress it.
+
+```
+# replace 'foo' with the remainder of the filename
+$ tar zxf namzd_foo.tgz
+
+# after decompression, to confirm the download and version
+$ namzd -V
+```
+
+Before use, macOS users will need to delete the 'quarantine' extended attribute that is applied to all 
+program downloads that are not notarized by Apple for a fee.
+
+```
+$ xattr -d com.apple.quarantine namzd
+```
+
+#### Usage
 
 ```
 Usage: namzd <match> <paths> ... [flags]

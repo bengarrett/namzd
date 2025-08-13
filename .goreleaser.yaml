@@ -5,6 +5,7 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
 version: 2
+report_sizes: true
 project_name: namzd
 before:
   hooks:
@@ -26,19 +27,38 @@ builds:
       - goos: linux
         goarch: "arm64"
 archives:
-  - format: tar.gz
+  - formats: ['tgz']
     files:
       - none*
     # this name template makes the OS and Arch compatible with the results of `uname`.
     name_template: >-
-      {{ .ProjectName }}_ {{- title .Os }}_ {{- if eq .Arch "amd64" }}x86_64 {{- else if eq .Arch "386" }}i386 {{- else }}{{ .Arch }}{{ end }} {{- if .Arm }}v{{ .Arm }}{{ end }}
+      namzd_ {{- if eq .Os "darwin" }} {{- if .Arm64 }}apple_silicon{{ else }}apple_intel_cpu{{ end }} {{- else }}{{ .Os }}{{ end -}}
     # use zip for windows archives
     format_overrides:
       - goos: windows
-        format: zip
+        formats: ['zip']
+nfpms:
+  - id: Linux
+    package_name: "retrotxt"
+    file_name_template: "retrotxt"
+    vendor: Ben Garrett.
+    homepage: https://retrotxt.com/go
+    maintainer: Ben Garrett <code.by.ben@gmail.com>
+    description: Read legacy code page encoded textfiles in a modern Unicode terminal.
+    license: LGPL 3.0
+    formats:
+      - apk
+      - deb
+      - rpm
+      - archlinux
 changelog:
   sort: asc
   filters:
     exclude:
       - "^docs:"
       - "^test:"
+release:
+  footer: >-
+    ---
+
+    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
