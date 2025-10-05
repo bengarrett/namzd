@@ -4,7 +4,7 @@ go 1.24.6
 
 require (
 	github.com/alecthomas/kong v1.12.1
-	github.com/charlievieth/fastwalk v1.0.12
+	github.com/charlievieth/fastwalk v1.0.14
 )
 
 require (
