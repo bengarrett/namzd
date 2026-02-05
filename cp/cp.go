@@ -1,3 +1,4 @@
+// Package cp provides file copying utilities for matched files.
 package cp
 
 import (
@@ -12,8 +13,10 @@ func CheckDest(dir string) error {
 	if err != nil {
 		return fmt.Errorf("destination directory is not writable: %w", err)
 	}
-	tmp.Close()
-	defer os.Remove(tmp.Name())
+	defer func() {
+		tmp.Close()
+		os.Remove(tmp.Name())
+	}()
 	return nil
 }
 
@@ -38,6 +41,7 @@ func Copy(source, destination string) error {
 	const size = 4 * 1024
 	buf := make([]byte, size)
 	if _, err := io.CopyBuffer(dst, src, buf); err != nil {
+		os.Remove(destination)
 		return fmt.Errorf("copy: %w", err)
 	}
 

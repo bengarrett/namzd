@@ -1,3 +1,4 @@
+// Package main implements the namzd CLI tool for quickly finding files by name or extension across directories and archives.
 package main
 
 import (

@@ -75,3 +75,7 @@ tasks:
     desc: "Run the verbose test suite with intensive race detection."
     cmds:
       - go test -count=1000 -race ./...
+  bench:
+    desc: "Benchmarks for the app."
+    cmds:
+      - go test -bench=. -benchmem ./ls ./cp

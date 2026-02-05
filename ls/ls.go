@@ -1,3 +1,4 @@
+// Package ls provides file search and matching functionality across directories and archives.
 package ls
 
 import (
@@ -245,6 +246,7 @@ func (opt Config) Zips(pattern, path string) ([]Find, error) {
 }
 
 // TarArchive checks if the file is a tar archive.
+// TarArchive checks if the file is a tar archive.
 func TarArchive(path string) bool {
 	file, err := os.Open(path)
 	if err != nil {
@@ -261,7 +263,6 @@ func TarArchive(path string) bool {
 		magic[offset+2] != 0x74 || magic[offset+3] != 0x61 {
 		return false
 	}
-	file.Close()
 	return true
 }
 
@@ -278,11 +279,10 @@ func ZipArchive(path string) bool {
 		return false
 	}
 	// Check if the magic number matches the ZIP file magic number
-	if magic[0] != 0x50 || magic[1] != 0x4B ||
+	if len(magic) < size || magic[0] != 0x50 || magic[1] != 0x4B ||
 		magic[2] != 0x03 || magic[3] != 0x04 {
 		return false
 	}
-	file.Close()
 	return true
 }
 
@@ -330,7 +330,7 @@ func (m *Match) UpdateO(count int, path string, find Find) {
 	m.Fd = find
 }
 
-// Update the match with the count, filename, path and file info if the modtime is newer.
+// UpdateN updates the match with the count, filename, path and file info if the modtime is newer.
 func (m *Match) UpdateN(count int, path string, find Find) {
 	if find.ModTime.IsZero() || find.Name == "" {
 		return
@@ -401,5 +401,5 @@ func (opt Config) newest(w io.Writer, count int, newest Match) {
 // However due to false positives created by systems that lacked a real-time clock,
 // it treats Epoch as the 1 February 1980, and not 1 January, 1980.
 func DosEpoch(t time.Time) bool {
-	return t.UTC().Before(time.Date(1980, 2, 0, 0, 0, 0, 0, time.UTC))
+	return t.UTC().Before(time.Date(1980, time.February, 1, 0, 0, 0, 0, time.UTC))
 }

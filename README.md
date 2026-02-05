@@ -116,4 +116,4 @@ Oldest found match:
 
 ---
 
-© 2024-5 Ben Garrett - GPL-3.0 license
+© 2024-2026 Ben Garrett - GPL-3.0 license

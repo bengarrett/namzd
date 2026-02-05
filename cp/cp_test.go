@@ -74,3 +74,25 @@ func TestCopy(t *testing.T) {
 		t.Fatalf("failed to walk testdata directory: %v", err)
 	}
 }
+
+// Benchmarks
+
+// BenchmarkCopy benchmarks file copying operation.
+func BenchmarkCopy(b *testing.B) {
+	src := filepath.Join("..", "testdata", "archive.tar")
+	b.Run("SmallFile", func(b *testing.B) {
+		for b.Loop() {
+			dst := filepath.Join(b.TempDir(), "archive.tar")
+			_ = cp.Copy(src, dst)
+		}
+	})
+}
+
+// BenchmarkCheckDest benchmarks destination directory validation.
+func BenchmarkCheckDest(b *testing.B) {
+	tmpDir := b.TempDir()
+	b.ResetTimer()
+	for b.Loop() {
+		_ = cp.CheckDest(tmpDir)
+	}
+}

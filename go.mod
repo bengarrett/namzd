@@ -1,6 +1,6 @@
 module github.com/bengarrett/namzd
 
-go 1.24.6
+go 1.25.6
 
 require (
 	github.com/alecthomas/kong v1.13.0

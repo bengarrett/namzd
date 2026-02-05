@@ -670,3 +670,111 @@ func TestConfig_Archiver(t *testing.T) {
 		})
 	}
 }
+
+// Benchmarks
+
+// BenchmarkConfig_Walk_CaseSensitive benchmarks directory walking with case-sensitive matching.
+func BenchmarkConfig_Walk_CaseSensitive(b *testing.B) {
+	tdir, _ := filepath.Abs(filepath.Join("..", "testdata"))
+	opt := ls.Config{
+		Casesensitive: true,
+	}
+	var buf bytes.Buffer
+	b.ResetTimer()
+	for b.Loop() {
+		_, _ = opt.Walk(&buf, 0, "*.xyz", tdir)
+	}
+}
+
+// BenchmarkConfig_Walk_CaseInsensitive benchmarks directory walking with case-insensitive matching.
+func BenchmarkConfig_Walk_CaseInsensitive(b *testing.B) {
+	tdir, _ := filepath.Abs(filepath.Join("..", "testdata"))
+	opt := ls.Config{
+		Casesensitive: false,
+	}
+	var buf bytes.Buffer
+	b.ResetTimer()
+	for b.Loop() {
+		_, _ = opt.Walk(&buf, 0, "*.xyz", tdir)
+	}
+}
+
+// BenchmarkConfig_Walk_Wildcard benchmarks directory walking with wildcard patterns.
+func BenchmarkConfig_Walk_Wildcard(b *testing.B) {
+	tdir, _ := filepath.Abs(filepath.Join("..", "testdata"))
+	opt := ls.Config{}
+	var buf bytes.Buffer
+	b.ResetTimer()
+	for b.Loop() {
+		_, _ = opt.Walk(&buf, 0, "*", tdir)
+	}
+}
+
+// BenchmarkConfig_Walk_LiteralMatch benchmarks directory walking with literal filename matching.
+func BenchmarkConfig_Walk_LiteralMatch(b *testing.B) {
+	tdir, _ := filepath.Abs(filepath.Join("..", "testdata"))
+	opt := ls.Config{}
+	var buf bytes.Buffer
+	b.ResetTimer()
+	for b.Loop() {
+		_, _ = opt.Walk(&buf, 0, "file_1996", tdir)
+	}
+}
+
+// BenchmarkConfig_Archiver_Zip benchmarks archive detection for ZIP files.
+func BenchmarkConfig_Archiver_Zip(b *testing.B) {
+	tdir, _ := filepath.Abs(filepath.Join("..", "testdata", "archive.zip"))
+	opt := ls.Config{
+		Archive: true,
+	}
+	b.ResetTimer()
+	for b.Loop() {
+		_, _ = opt.Archiver("*", tdir)
+	}
+}
+
+// BenchmarkConfig_Archiver_Tar benchmarks archive detection for TAR files.
+func BenchmarkConfig_Archiver_Tar(b *testing.B) {
+	tdir, _ := filepath.Abs(filepath.Join("..", "testdata", "archive.tar"))
+	opt := ls.Config{
+		Archive: true,
+	}
+	b.ResetTimer()
+	for b.Loop() {
+		_, _ = opt.Archiver("*", tdir)
+	}
+}
+
+// BenchmarkConfig_Archiver_TarXZ benchmarks archive detection for TAR.XZ files.
+func BenchmarkConfig_Archiver_TarXZ(b *testing.B) {
+	tdir, _ := filepath.Abs(filepath.Join("..", "testdata", "archive.tar.xz"))
+	opt := ls.Config{
+		Archive: true,
+	}
+	b.ResetTimer()
+	for b.Loop() {
+		_, _ = opt.Archiver("*", tdir)
+	}
+}
+
+// BenchmarkMatch_Older benchmarks the Older comparison method.
+func BenchmarkMatch_Older(b *testing.B) {
+	t1 := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	t2 := time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
+	m := &ls.Match{Fd: ls.Find{ModTime: t2}}
+	b.ResetTimer()
+	for b.Loop() {
+		_ = m.Older(t1)
+	}
+}
+
+// BenchmarkMatch_Newer benchmarks the Newer comparison method.
+func BenchmarkMatch_Newer(b *testing.B) {
+	t1 := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	t2 := time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)
+	m := &ls.Match{Fd: ls.Find{ModTime: t2}}
+	b.ResetTimer()
+	for b.Loop() {
+		_ = m.Newer(t1)
+	}
+}

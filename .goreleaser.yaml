@@ -29,7 +29,8 @@ builds:
 archives:
   - formats: ['tgz']
     files:
-      - none*
+      - LICENSE
+      - README*
     # this name template makes the OS and Arch compatible with the results of `uname`.
     name_template: >-
       namzd_ {{- if eq .Os "darwin" }} {{- if .Arm64 }}apple_silicon{{ else }}apple_intel_cpu{{ end }} {{- else }}{{ .Os }}{{ end -}}
@@ -41,11 +42,11 @@ nfpms:
   - id: Linux
     package_name: "namzd"
     file_name_template: "namzd"
-    vendor: Ben Garrett.
-    homepage: https://retrotxt.com/go
+    vendor: Ben Garrett
+    homepage: https://github.com/bengarrett/namzd
     maintainer: Ben Garrett <code.by.ben@gmail.com>
-    description: Read legacy code page encoded textfiles in a modern Unicode terminal.
-    license: LGPL 3.0
+    description: Quickly find files by name or extension across directories and archives
+    license: GPL-3.0
     formats:
       - apk
       - deb
