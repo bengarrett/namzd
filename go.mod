@@ -1,5 +1,6 @@
 module github.com/bengarrett/namzd
 
+// Update go-version in .github/workflows/goreleaser.yml when updating this version
 go 1.25.6
 
 require (
