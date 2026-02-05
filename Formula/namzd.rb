@@ -4,6 +4,7 @@ class Namzd < Formula
   url "https://github.com/bengarrett/namzd/archive/refs/tags/v1.2.4.tar.gz"
   sha256 "29c25beebb1b69037c6877332181fda8e1d0c60a0f4390476f155bde7f652bf6"
   version "1.2.4"
+  commit "7c36e0920da66d7df404926c90c997708f88fedb"
   license "GPL-3.0-only"
 
   livecheck do
@@ -14,7 +15,7 @@ class Namzd < Formula
   depends_on "go" => :build
 
   def install
-    system "go", "build", *std_go_args(ldflags: "-s -w -X main.version=#{version} -X main.commit=#{version} -X main.date=#{Time.now.strftime('%Y-%m-%d')}")
+    system "go", "build", *std_go_args(ldflags: "-s -w -X main.version=#{version} -X main.commit=#{commit} -X main.date=#{Time.now.utc.strftime('%Y-%m-%dT%H:%M:%SZ')}")
   end
 
   test do
