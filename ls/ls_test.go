@@ -136,8 +136,8 @@ func TestConfig(t *testing.T) { //nolint:funlen
 				LastModified: true,
 			},
 			wantContains: []string{
-				"5	file_1985 (1985-01-01) > ",
-				"6	file_2012.txt (2012-01-01) > ",
+				"file_1985 (1985-01-01) > " + filepath.Join(tdir, "archive.zip"),
+				"file_2012.txt (2012-01-01) > " + filepath.Join(tdir, "archive.tar"),
 			},
 			wantErr: false,
 		},
@@ -152,8 +152,8 @@ func TestConfig(t *testing.T) { //nolint:funlen
 				LastModified: true,
 			},
 			wantContains: []string{
-				"6	file_1985 (1985-01-01) > ",
-				"7	file_2012.txt (2012-01-01) > ",
+				"file_1985 (1985-01-01) > " + filepath.Join(tdir, "archive.zip"),
+				"file_2012.txt (2012-01-01) > " + filepath.Join(tdir, "archive.tar"),
 			},
 			wantErr: false,
 		},
@@ -168,7 +168,7 @@ func TestConfig(t *testing.T) { //nolint:funlen
 			},
 			wantContains: []string{
 				"Oldest found match:",
-				"5	file_1985 (1985-01-01) > ",
+				"file_1985 (1985-01-01) > " + filepath.Join(tdir, "archive.zip"),
 			},
 			wantErr: false,
 		},
@@ -183,7 +183,7 @@ func TestConfig(t *testing.T) { //nolint:funlen
 			},
 			wantContains: []string{
 				"Newest found match:",
-				"3	archive.tar.xz (2025-02-08) >",
+				"file_2002.zyx (2025-03-26) > " + filepath.Join(tdir, "file_2002.zyx"),
 			},
 			wantErr: false,
 		},
@@ -251,7 +251,7 @@ func TestConfig_Walk(t *testing.T) {
 			opt: ls.Config{
 				Directory: true,
 			},
-			wantFinds: 8,
+			wantFinds: 7, // 6 files + 1 directory (testdata itself)
 			wantErr:   false,
 		},
 	}

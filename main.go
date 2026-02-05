@@ -28,20 +28,20 @@ func (v VersionFlag) BeforeApply(app *kong.Kong, vars kong.Vars) error { //nolin
 
 // Cmd is the command line options for the ls command.
 type Cmd struct {
-	Archive       bool     `group:"zip"                                                   help:"Archive mode will also search within supported archives for matched filenames." short:"a"   xor:"x0"`
-	Destination   string   `group:"copy"                                                  help:"Destination directory path to copy matches."                                    short:"x"   type:"existingdir" xor:"x0,x1"`
+	Archive       bool     `group:"zip"                                                   help:"Archive mode will also search within supported archives for matched filenames."       short:"a"   xor:"x0"`
+	Destination   string   `group:"copy"                                                  help:"Destination directory path to copy matched files (cannot be used with archive mode)." short:"x"   type:"existingdir" xor:"x0"`
 	CaseSensitive bool     `help:"Case sensitive match."                                  short:"c"`
 	Count         bool     `help:"Count the number of matches."                           short:"n"`
 	LastModified  bool     `help:"Show the last modified time of the match (yyyy-mm-dd)." short:"m"`
 	Oldest        bool     `help:"Show the oldest file match."                            short:"o"`
 	Newest        bool     `help:"Show the newest file match."                            short:"N"`
-	Directory     bool     `default:"true"                                                help:"Include directory matches."                                                     short:"d"   xor:"x1"`
-	Errors        bool     `group:"errs"                                                  help:"Errors mode displays any file and directory read or access errors."             short:"e"`
+	Directory     bool     `default:"true"                                                help:"Include directory matches."                                                           short:"d"   xor:"x1"`
+	Errors        bool     `group:"errs"                                                  help:"Errors mode displays any file and directory read or access errors."                   short:"e"`
 	Follow        bool     `help:"Follow symbolic links."                                 short:"f"`
-	Panic         bool     `group:"errs"                                                  help:"Exits on any errors including file and directory read or access errors."        short:"p"`
-	Worker        int      `default:"0"                                                   help:"Number of workers to use or leave it to the app."                               hidden:""   short:"w"`
-	Match         string   `arg:""                                                        help:"Filename, extension or pattern to match."                                       required:""`
-	Paths         []string `arg:""                                                        help:"Paths to lookup."                                                               required:"" type:"existingdir"`
+	Panic         bool     `group:"errs"                                                  help:"Exits on any errors including file and directory read or access errors."              short:"p"`
+	Worker        int      `default:"0"                                                   help:"Number of workers to use or leave it to the app."                                     hidden:""   short:"w"`
+	Match         string   `arg:""                                                        help:"Filename, extension or pattern to match."                                             required:""`
+	Paths         []string `arg:""                                                        help:"Paths to lookup."                                                                     required:"" type:"existingdir"`
 }
 
 // Run the ls command.
@@ -105,7 +105,7 @@ func main() {
 	cpgrp := kong.Group{
 		Key:         "copy",
 		Title:       "Copier:",
-		Description: "Copy all matched files to a target directory. This option cannot be used with the archive options or the directory flag.",
+		Description: "Copy all matched files to a target directory. This option cannot be used with the archive options.",
 	}
 	errgrp := kong.Group{
 		Key:   "errs",
