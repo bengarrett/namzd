@@ -7,6 +7,8 @@ linters:
     - noinlineerr
     - wsl
     - wsl_v5
+    - paralleltest # causing race conditions
+    - tparallel
   exclusions:
     generated: lax
     presets:
@@ -34,6 +36,7 @@ linters:
             - github.com/bengarrett/namzd/ls
             - github.com/alecthomas/kong
             - github.com/charlievieth/fastwalk
+            - github.com/nalgeon/be
 formatters:
   enable:
     - gci

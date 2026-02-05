@@ -2,6 +2,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -9,6 +10,11 @@ import (
 	"github.com/bengarrett/namzd/cp"
 	"github.com/bengarrett/namzd/ls"
 	"github.com/charlievieth/fastwalk"
+)
+
+var (
+	ErrMatchRequired = errors.New("match pattern is required")
+	ErrPathsRequired = errors.New("at least one path is required")
 )
 
 type Globals struct {
@@ -28,7 +34,7 @@ func (v VersionFlag) BeforeApply(app *kong.Kong, vars kong.Vars) error { //nolin
 
 // Cmd is the command line options for the ls command.
 type Cmd struct {
-	Archive       bool     `group:"zip"                                                   help:"Archive mode will also search within supported archives for matched filenames."       short:"a"   xor:"x0"`
+	Archive       bool     `group:"zip"                                                   help:"Archive mode will also search within supported archives (ZIP, TAR, TAR.GZ, TAR.XZ)."  short:"a"   xor:"x0"`
 	Destination   string   `group:"copy"                                                  help:"Destination directory path to copy matched files (cannot be used with archive mode)." short:"x"   type:"existingdir" xor:"x0"`
 	CaseSensitive bool     `help:"Case sensitive match."                                  short:"c"`
 	Count         bool     `help:"Count the number of matches."                           short:"n"`
@@ -61,6 +67,15 @@ func (cmd *Cmd) Run() error {
 		Panic:         cmd.Panic,
 		Sort:          fastwalk.SortDirsFirst,
 	}
+
+	// Validate required arguments
+	if cmd.Match == "" {
+		return fmt.Errorf("run cmd: %w", ErrMatchRequired)
+	}
+	if len(cmd.Paths) == 0 {
+		return fmt.Errorf("run cmd: %w", ErrPathsRequired)
+	}
+
 	if err := cp.CheckDest(opt.Destination); err != nil {
 		return fmt.Errorf("run ls: %w", err)
 	}
@@ -80,7 +95,29 @@ These are case-insensitive by default and should be quoted:
 	'file.txt' matches file.txt, File.txt, file.TXT, etc.
 	'*.txt' matches readme.txt, File.txt, DOC.TXT, etc.
 	'*.tar*' matches files.tar.gz, FILE.tarball, files.tar, files.tar.xz, etc.
-	'*.tar.??' matches files.tar.gz, files.tar.xz, etc.`
+	'*.tar.??' matches files.tar.gz, files.tar.xz, etc.
+
+Examples:
+
+	# Find all README files in current directory
+	namzd 'readme' .
+
+	# Find all Go files in a code directory
+	namzd '*.go' /path/to/code
+
+	# Case-sensitive search for config files
+	namzd 'config' --case-sensitive /etc
+
+	# Count text files in documents
+	namzd '*.txt' --count /documents
+
+	# Find oldest backup file
+	namzd 'backup' --oldest /archives
+
+Flag Compatibility:
+
+	--archive and --destination cannot be used together
+	Some flags have logical exclusions (XOR relationships)`
 	return help
 }
 

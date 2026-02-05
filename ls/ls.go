@@ -89,10 +89,10 @@ func (opt Config) Walk(out io.Writer, count int, pattern, root string) (int, err
 				}
 				Print(out, opt.LastModified, count, path, find)
 				if opt.Oldest {
-					oldest.UpdateO(count, path, find)
+					(&oldest).UpdateO(count, path, find)
 				}
 				if opt.Newest {
-					newest.UpdateN(count, path, find)
+					(&newest).UpdateN(count, path, find)
 				}
 			}
 			return nil
@@ -114,8 +114,8 @@ func (opt Config) Walk(out io.Writer, count int, pattern, root string) (int, err
 	if err := fastwalk.Walk(&conf, root, walkFn); err != nil {
 		return count, fmt.Errorf("fastwalk: %w", err)
 	}
-	opt.oldest(out, count, oldest)
-	opt.newest(out, count, newest)
+	opt.oldest(out, &oldest)
+	opt.newest(out, &newest)
 	return count, nil
 }
 
@@ -289,6 +289,8 @@ func ZipArchive(path string) bool {
 // Match is the matched filename and path.
 // It is used when the oldest or newest flags are set.
 type Match struct {
+	sync.Mutex
+
 	Count int    // Count of matches.
 	Path  string // Path to the matched file.
 	Fd    Find   // Find of the matched file.
@@ -321,13 +323,25 @@ func (m *Match) UpdateO(count int, path string, find Find) {
 	if find.ModTime.IsZero() || find.Name == "" {
 		return
 	}
-	t := find.ModTime
-	if !m.Older(t) {
+	modTime := find.ModTime
+	m.Lock()
+	defer m.Unlock()
+	// Inline the Older logic to avoid nested locking
+	if DosEpoch(modTime) {
 		return
 	}
-	m.Count = count
-	m.Path = path
-	m.Fd = find
+	if m.Fd.ModTime.IsZero() {
+		// If current match has zero time, this file is older
+		m.Count = count
+		m.Path = path
+		m.Fd = find
+		return
+	}
+	if modTime.Before(m.Fd.ModTime) {
+		m.Count = count
+		m.Path = path
+		m.Fd = find
+	}
 }
 
 // UpdateN updates the match with the count, filename, path and file info if the modtime is newer.
@@ -335,13 +349,25 @@ func (m *Match) UpdateN(count int, path string, find Find) {
 	if find.ModTime.IsZero() || find.Name == "" {
 		return
 	}
-	t := find.ModTime
-	if !m.Newer(t) {
+	modTime := find.ModTime
+	m.Lock()
+	defer m.Unlock()
+	// Inline the Newer logic to avoid nested locking
+	if DosEpoch(modTime) {
 		return
 	}
-	m.Count = count
-	m.Path = path
-	m.Fd = find
+	if m.Fd.ModTime.IsZero() {
+		// If current match has zero time, this file is newer
+		m.Count = count
+		m.Path = path
+		m.Fd = find
+		return
+	}
+	if modTime.After(m.Fd.ModTime) {
+		m.Count = count
+		m.Path = path
+		m.Fd = find
+	}
 }
 
 // Print the matched find to the writer.
@@ -380,16 +406,16 @@ func (opt Config) Print(out io.Writer, count int, path string) {
 	fmt.Fprint(out, path+"\n")
 }
 
-func (opt Config) oldest(w io.Writer, count int, oldest Match) {
-	if !opt.Oldest || count < 2 || oldest.Fd.ModTime.IsZero() {
+func (opt Config) oldest(w io.Writer, oldest *Match) {
+	if !opt.Oldest || oldest.Fd.ModTime.IsZero() || oldest.Fd.Name == "" {
 		return
 	}
 	fmt.Fprintln(w, "Oldest found match:")
 	Print(w, true, oldest.Count, oldest.Path, oldest.Fd)
 }
 
-func (opt Config) newest(w io.Writer, count int, newest Match) {
-	if !opt.Newest || count < 2 || newest.Fd.ModTime.IsZero() {
+func (opt Config) newest(w io.Writer, newest *Match) {
+	if !opt.Newest || newest.Fd.ModTime.IsZero() || newest.Fd.Name == "" {
 		return
 	}
 	fmt.Fprintln(w, "Newest found match:")

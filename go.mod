@@ -6,6 +6,7 @@ go 1.25.6
 require (
 	github.com/alecthomas/kong v1.13.0
 	github.com/charlievieth/fastwalk v1.0.14
+	github.com/nalgeon/be v0.3.0
 )
 
 require (

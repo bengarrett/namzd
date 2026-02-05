@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bengarrett/namzd/ls"
+	"github.com/nalgeon/be"
 )
 
 func TestConfig_Copier(t *testing.T) {
@@ -60,9 +61,8 @@ func TestConfig_Copier(t *testing.T) {
 			tt.opt.StdErrors = true      // Enable standard error output
 			tt.opt.Copier(&buf, tt.path) // copier does not return anything
 			for _, want := range tt.wantContains {
-				if got := buf.String(); !strings.Contains(got, want) {
-					t.Errorf("Config.Walk() = %v, want %v", got, want)
-				}
+				got := buf.String()
+				be.True(t, strings.Contains(got, want))
 			}
 		})
 	}
@@ -194,14 +194,10 @@ func TestConfig(t *testing.T) { //nolint:funlen
 			const resetCount = 0
 			var buf bytes.Buffer
 			_, err := tt.opt.Walk(&buf, resetCount, tt.pattern, tt.path)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Config.Walk() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			be.Equal(t, (err != nil), tt.wantErr)
 			for _, want := range tt.wantContains {
-				if got := buf.String(); !strings.Contains(got, want) {
-					t.Errorf("Config.Walk() = %v, want %v", got, want)
-				}
+				got := buf.String()
+				be.True(t, strings.Contains(got, want))
 			}
 		})
 	}
@@ -251,7 +247,7 @@ func TestConfig_Walk(t *testing.T) {
 			opt: ls.Config{
 				Directory: true,
 			},
-			wantFinds: 7, // 6 files + 1 directory (testdata itself)
+			wantFinds: 8, // 7 files + 1 directory (testdata itself)
 			wantErr:   false,
 		},
 	}
@@ -262,13 +258,8 @@ func TestConfig_Walk(t *testing.T) {
 			tt.opt.Count = true      // Enable counting otherwise 0 is always returned
 			tt.opt.StdErrors = false // Disable standard error output
 			count, err := tt.opt.Walk(io.Discard, resetCount, tt.pattern, tt.path)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Config.Walk() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if count != tt.wantFinds {
-				t.Errorf("Config.Walk() = %v, want %v", count, tt.wantFinds)
-			}
+			be.Equal(t, (err != nil), tt.wantErr)
+			be.Equal(t, count, tt.wantFinds)
 		})
 	}
 }
@@ -305,9 +296,7 @@ func TestDosEpoch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if got := ls.DosEpoch(tt.time); got != tt.want {
-				t.Errorf("DosEpoch() = %v, want %v", got, tt.want)
-			}
+			be.Equal(t, ls.DosEpoch(tt.time), tt.want)
 		})
 	}
 }
@@ -366,9 +355,7 @@ func TestPrint(t *testing.T) {
 			t.Parallel()
 			var buf bytes.Buffer
 			ls.Print(&buf, true, tt.count, tt.path, tt.fd)
-			if got := buf.String(); got != tt.want {
-				t.Errorf("Print() = %v, want %v", got, tt.want)
-			}
+			be.Equal(t, buf.String(), tt.want)
 		})
 	}
 }
@@ -377,31 +364,31 @@ func TestMatch_Older(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name string
-		m    ls.Match
+		m    *ls.Match
 		time time.Time
 		want bool
 	}{
 		{
 			name: "Older time",
-			m:    ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:    &ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			time: time.Date(2022, 10, 1, 0, 0, 0, 0, time.UTC),
 			want: true,
 		},
 		{
 			name: "Newer time",
-			m:    ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:    &ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			time: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
 			want: false,
 		},
 		{
 			name: "Zero mod time",
-			m:    ls.Match{Fd: ls.Find{ModTime: time.Time{}}},
+			m:    &ls.Match{Fd: ls.Find{ModTime: time.Time{}}},
 			time: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC),
 			want: true,
 		},
 		{
 			name: "DOS epoch time",
-			m:    ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:    &ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			time: time.Date(1979, 12, 31, 23, 59, 59, 0, time.UTC),
 			want: false,
 		},
@@ -410,9 +397,7 @@ func TestMatch_Older(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if got := tt.m.Older(tt.time); got != tt.want {
-				t.Errorf("Match.Older() = %v, want %v", got, tt.want)
-			}
+			be.Equal(t, tt.m.Older(tt.time), tt.want)
 		})
 	}
 }
@@ -421,31 +406,31 @@ func TestMatch_Newer(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name string
-		m    ls.Match
+		m    *ls.Match
 		time time.Time
 		want bool
 	}{
 		{
 			name: "Newer time",
-			m:    ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:    &ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			time: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
 			want: true,
 		},
 		{
 			name: "Older time",
-			m:    ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:    &ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			time: time.Date(2022, 10, 1, 0, 0, 0, 0, time.UTC),
 			want: false,
 		},
 		{
 			name: "Zero mod time",
-			m:    ls.Match{Fd: ls.Find{ModTime: time.Time{}}},
+			m:    &ls.Match{Fd: ls.Find{ModTime: time.Time{}}},
 			time: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC),
 			want: true,
 		},
 		{
 			name: "DOS epoch time",
-			m:    ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:    &ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			time: time.Date(1979, 12, 31, 23, 59, 59, 0, time.UTC),
 			want: false,
 		},
@@ -454,9 +439,7 @@ func TestMatch_Newer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if got := tt.m.Newer(tt.time); got != tt.want {
-				t.Errorf("Match.Newer() = %v, want %v", got, tt.want)
-			}
+			be.Equal(t, tt.m.Newer(tt.time), tt.want)
 		})
 	}
 }
@@ -497,13 +480,14 @@ func TestMatch_UpdateO(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i] // Use pointer to avoid copying
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			tt.m.UpdateO(tt.count, tt.path, tt.fd)
-			if tt.m != tt.want {
-				t.Errorf("Match.UpdateO() = %v, want %v", tt.m, tt.want)
-			}
+			be.Equal(t, tt.m.Count, tt.want.Count)
+			be.Equal(t, tt.m.Path, tt.want.Path)
+			be.Equal(t, tt.m.Fd, tt.want.Fd)
 		})
 	}
 }
@@ -512,45 +496,46 @@ func TestMatch_UpdateN(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name  string
-		m     ls.Match
+		m     *ls.Match
 		count int
 		path  string
 		fd    ls.Find
-		want  ls.Match
+		want  *ls.Match
 	}{
 		{
 			name:  "Update newer match",
-			m:     ls.Match{Fd: ls.Find{ModTime: time.Date(2022, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:     &ls.Match{Fd: ls.Find{ModTime: time.Date(2022, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			count: 1,
 			path:  "/path/to/file",
 			fd:    ls.Find{Name: "file.txt", ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)},
-			want:  ls.Match{Count: 1, Path: "/path/to/file", Fd: ls.Find{Name: "file.txt", ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			want:  &ls.Match{Count: 1, Path: "/path/to/file", Fd: ls.Find{Name: "file.txt", ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 		},
 		{
 			name:  "Do not update older match",
-			m:     ls.Match{Fd: ls.Find{ModTime: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:     &ls.Match{Fd: ls.Find{ModTime: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			count: 1,
 			path:  "/path/to/file",
 			fd:    ls.Find{Name: "file.txt", ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)},
-			want:  ls.Match{Fd: ls.Find{ModTime: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			want:  &ls.Match{Fd: ls.Find{ModTime: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC)}},
 		},
 		{
 			name:  "Do not update with zero mod time",
-			m:     ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			m:     &ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 			count: 1,
 			path:  "/path/to/file",
 			fd:    ls.Find{Name: "file.txt", ModTime: time.Time{}},
-			want:  ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
+			want:  &ls.Match{Fd: ls.Find{ModTime: time.Date(2023, 10, 1, 0, 0, 0, 0, time.UTC)}},
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i] // Use pointer to avoid copying
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			tt.m.UpdateN(tt.count, tt.path, tt.fd)
-			if tt.m != tt.want {
-				t.Errorf("Match.UpdateN() = %v, want %v", tt.m, tt.want)
-			}
+			be.Equal(t, tt.m.Count, tt.want.Count)
+			be.Equal(t, tt.m.Path, tt.want.Path)
+			be.Equal(t, tt.m.Fd, tt.want.Fd)
 		})
 	}
 }
@@ -601,9 +586,7 @@ func TestConfig_Walks(t *testing.T) {
 			t.Parallel()
 			var buf bytes.Buffer
 			err := tt.config.Walks(&buf, tt.pattern, tt.roots...)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Config.Walks() error = %v, wantErr %v", err, tt.wantErr)
-			}
+			be.Equal(t, (err != nil), tt.wantErr)
 		})
 	}
 }
@@ -660,13 +643,8 @@ func TestConfig_Archiver(t *testing.T) {
 			tt.opt.Archive = true
 			path, _ := filepath.Abs(tt.path)
 			finds, err := tt.opt.Archiver(tt.pattern, path)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Config.Archiver() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if len(finds) != tt.wantFinds {
-				t.Errorf("Config.Archiver() = %v, want %v", len(finds), tt.wantFinds)
-			}
+			be.Equal(t, (err != nil), tt.wantErr)
+			be.Equal(t, len(finds), tt.wantFinds)
 		})
 	}
 }

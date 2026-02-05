@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/bengarrett/namzd/cp"
+	"github.com/nalgeon/be"
 )
 
 func TestCheckDest(t *testing.T) {
@@ -14,18 +15,14 @@ func TestCheckDest(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir() // Create a temporary directory
 		err := cp.CheckDest(dir)
-		if err != nil {
-			t.Errorf("expected no error, got %v", err)
-		}
+		be.Err(t, err, nil)
 	})
 
 	t.Run("NonExistentDirectory", func(t *testing.T) {
 		t.Parallel()
 		dir := filepath.Join(os.TempDir(), "nonexistent_dir")
 		err := cp.CheckDest(dir)
-		if err == nil {
-			t.Errorf("expected an error, got nil")
-		}
+		be.True(t, err != nil)
 	})
 
 	t.Run("NonWritableDirectory", func(t *testing.T) {
@@ -40,9 +37,7 @@ func TestCheckDest(t *testing.T) {
 		}()
 
 		err = cp.CheckDest(dir)
-		if err == nil {
-			t.Errorf("expected an error, got nil")
-		}
+		be.True(t, err != nil)
 	})
 }
 
