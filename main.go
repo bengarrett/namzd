@@ -91,11 +91,16 @@ func help() string {
 A <match> query is a filename, extension or pattern to match.
 These are case-insensitive by default and should be quoted:
 
-	'readme' matches README, Readme, readme, etc.
+	'readme'   matches README, Readme, readme, etc.
 	'file.txt' matches file.txt, File.txt, file.TXT, etc.
-	'*.txt' matches readme.txt, File.txt, DOC.TXT, etc.
-	'*.tar*' matches files.tar.gz, FILE.tarball, files.tar, files.tar.xz, etc.
+	'*.txt'    matches readme.txt, File.txt, DOC.TXT, etc.
+	'*.tar*'   matches files.tar.gz, FILE.tarball, files.tar, files.tar.xz, etc.
 	'*.tar.??' matches files.tar.gz, files.tar.xz, etc.
+
+	Always quote wildcard patterns:
+
+	namzd '*.txt' /path  # correct, namzd processes the wildcard
+	namzd  *.txt  /path  # invalid, as the shell expands *.txt first
 
 Examples:
 
@@ -106,13 +111,13 @@ Examples:
 	namzd '*.go' /path/to/code
 
 	# Case-sensitive search for config files
-	namzd 'config' --case-sensitive /etc
+	namzd 'config' /etc --case-sensitive
 
 	# Count text files in documents
-	namzd '*.txt' --count /documents
+	namzd '*.txt' /documents --count
 
 	# Find oldest backup file
-	namzd 'backup' --oldest /archives
+	namzd 'backup' /archives --oldest
 
 Flag Compatibility:
 
