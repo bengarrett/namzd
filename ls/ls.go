@@ -55,6 +55,7 @@ func (opt Config) Walks(w io.Writer, pattern string, roots ...string) error {
 // Walk the root directory to match filenames to the pattern and writes the results to the out writer.
 // The counted finds is returned or left at 0 if not counting.
 func (opt Config) Walk(out io.Writer, count int, pattern, root string) (int, error) { //nolint:gocognit,cyclop,funlen
+	fmt.Println("walking")
 	conf := fastwalk.Config{
 		Follow:     opt.Follow,
 		Sort:       opt.Sort,
@@ -72,7 +73,7 @@ func (opt Config) Walk(out io.Writer, count int, pattern, root string) (int, err
 			}
 			return nil
 		}
-		finds, err := opt.Archiver(pattern, path)
+		archiverFinds, err := opt.Archiver(pattern, path)
 		if err != nil {
 			if opt.Panic {
 				return fmt.Errorf("walk: %w", err)
@@ -82,8 +83,8 @@ func (opt Config) Walk(out io.Writer, count int, pattern, root string) (int, err
 			}
 			return nil
 		}
-		if len(finds) > 0 {
-			for _, find := range finds {
+		if len(archiverFinds) > 0 {
+			for _, find := range archiverFinds {
 				if opt.Count {
 					count++
 				}
@@ -101,10 +102,10 @@ func (opt Config) Walk(out io.Writer, count int, pattern, root string) (int, err
 			return err
 		}
 		opt.Copier(os.Stderr, path)
-		opt.Update(dir, count, path, &oldest, &newest)
 		if opt.Count {
 			count++
 		}
+		opt.Update(dir, count, path, &oldest, &newest)
 		// this is required to avoid a possible race condition when writing to the io.Writer
 		printMu.Lock()
 		defer printMu.Unlock()
