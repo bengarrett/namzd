@@ -14,7 +14,7 @@ class Namzd < Formula
   depends_on "go" => :build
 
   def install
-    system "go", "build", *std_go_args(ldflags: "-s -w")
+    system "go", "build", *std_go_args(ldflags: "-s -w -X main.version=#{version} -X main.commit=#{version} -X main.date=#{Time.now.strftime('%Y-%m-%d')}")
   end
 
   test do
