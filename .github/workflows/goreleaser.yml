@@ -42,6 +42,7 @@ jobs:
           VERSION=${{ github.ref_name }}
           VERSION=${VERSION#v}
           COMMIT=${{ github.sha }}
+          BUILD_DATE=$(git log -1 --format=%aI "${COMMIT}")
           TAR_URL="https://github.com/bengarrett/namzd/archive/refs/tags/v${VERSION}.tar.gz"
           SHA=$(curl -L "${TAR_URL}" | sha256sum | awk '{print $1}')
           python - <<'PY'
@@ -54,10 +55,11 @@ text = formula_path.read_text()
 text = re.sub(r'^  url ".*"$', f'  url "{sys.argv[1]}"', text, flags=re.MULTILINE)
 text = re.sub(r'^  sha256 ".*"$', f'  sha256 "{sys.argv[2]}"', text, flags=re.MULTILINE)
 text = re.sub(r'^  version ".*"$', f'  version "{sys.argv[3]}"', text, flags=re.MULTILINE)
-text = re.sub(r'^  commit ".*"$', f'  commit "{sys.argv[4]}"', text, flags=re.MULTILINE)
+text = re.sub(r'^  @commit = ".*"$', f'  @commit = "{sys.argv[4]}"', text, flags=re.MULTILINE)
+text = re.sub(r'^  @build_date = ".*"$', f'  @build_date = "{sys.argv[5]}"', text, flags=re.MULTILINE)
 
 formula_path.write_text(text)
-PY "${TAR_URL}" "${SHA}" "${VERSION}" "${COMMIT}"
+PY "${TAR_URL}" "${SHA}" "${VERSION}" "${COMMIT}" "${BUILD_DATE}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/namzd.rb
