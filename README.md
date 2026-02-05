@@ -27,6 +27,21 @@ program downloads that are not notarized by Apple for a fee.
 $ xattr -d com.apple.quarantine namzd
 ```
 
+#### Homebrew
+
+macOS and Linux users can install via Homebrew:
+
+```bash
+brew tap bengarrett/namzd https://github.com/bengarrett/namzd
+brew install bengarrett/namzd/namzd
+```
+
+Update to the latest version with:
+
+```bash
+brew upgrade bengarrett/namzd/namzd
+```
+
 #### Usage
 
 ```
