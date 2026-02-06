@@ -22,6 +22,8 @@ func TestVersionFlag(t *testing.T) {
 
 func TestCmdRun(t *testing.T) { //nolint:funlen
 	// Removed t.Parallel() due to race conditions with global state
+	// Set NO_COLOR for consistent test output
+	t.Setenv("NO_COLOR", "1")
 	tdir := "testdata"
 
 	tests := []struct {
@@ -116,7 +118,11 @@ func TestCmdRun(t *testing.T) { //nolint:funlen
 				if err != nil {
 					t.Fatalf("Failed to read from pipe: %v", err)
 				}
+				output := buf.String()
 				for _, want := range tt.wantContains {
+					if !bytes.Contains(buf.Bytes(), []byte(want)) {
+						t.Logf("Expected to find '%s' in output:\n%s", want, output)
+					}
 					be.True(t, bytes.Contains(buf.Bytes(), []byte(want)))
 				}
 			}

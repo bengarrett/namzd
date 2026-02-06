@@ -44,6 +44,7 @@ type Cmd struct {
 	Directory     bool     `default:"true"                                                help:"Include directory matches."                                                           short:"d"   xor:"x1"`
 	Errors        bool     `group:"errs"                                                  help:"Errors mode displays any file and directory read or access errors."                   short:"e"`
 	Follow        bool     `help:"Follow symbolic links."                                 short:"f"`
+	NoColor       bool     `help:"No color output is faster."                             short:"C"`
 	Panic         bool     `group:"errs"                                                  help:"Exits on any errors including file and directory read or access errors."              short:"p"`
 	Worker        int      `default:"0"                                                   help:"Number of workers to use or leave it to the app."                                     hidden:""   short:"w"`
 	Match         string   `arg:""                                                        help:"Filename, extension or pattern to match."                                             required:""`
@@ -63,6 +64,7 @@ func (cmd *Cmd) Run() error {
 		LastModified:  cmd.LastModified,
 		Oldest:        cmd.Oldest,
 		Newest:        cmd.Newest,
+		NoColor:       cmd.NoColor,
 		NumWorkers:    0,
 		Panic:         cmd.Panic,
 		Sort:          fastwalk.SortDirsFirst,
@@ -88,7 +90,7 @@ func (cmd *Cmd) Run() error {
 func help() string {
 	help := `
 
-A <match> query is a filename, extension or pattern to match.
+A <match> query is a filename, extension or pattern.
 These are case-insensitive by default and should be quoted:
 
 	'readme'   matches README, Readme, readme, etc.
@@ -119,10 +121,9 @@ Examples:
 	# Find oldest backup file
 	namzd 'backup' /archives --oldest
 
-Flag Compatibility:
+Flag Incompatibility:
 
-	--archive and --destination cannot be used together
-	Some flags have logical exclusions (XOR relationships)`
+	--archive and --destination cannot be used together`
 	return help
 }
 
@@ -156,7 +157,7 @@ func main() {
 	zipgrp := kong.Group{
 		Key:         "zip",
 		Title:       "Archives:",
-		Description: "Also search within archives for matching files. This will not open or decompress archives to read archives within archives.",
+		Description: "Also search within archives for matching files. This will not recursively search archives contained within archives.",
 	}
 
 	ctx := kong.Parse(&cli,

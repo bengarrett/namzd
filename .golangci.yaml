@@ -5,9 +5,11 @@ linters:
     - exhaustruct
     - nlreturn
     - noinlineerr
+    - varnamelen
     - wsl
     - wsl_v5
-    - paralleltest # causing race conditions
+    # the parallel tests cause race conditions
+    - paralleltest 
     - tparallel
   exclusions:
     generated: lax
@@ -32,10 +34,13 @@ linters:
         main:
           allow:
             - $gostd
+            - github.com/bengarrett/namzd/color
             - github.com/bengarrett/namzd/cp
             - github.com/bengarrett/namzd/ls
             - github.com/alecthomas/kong
             - github.com/charlievieth/fastwalk
+            - github.com/charmbracelet/colorprofile
+            - github.com/charmbracelet/x/ansi
             - github.com/nalgeon/be
 formatters:
   enable:

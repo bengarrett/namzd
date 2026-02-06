@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bengarrett/namzd/color"
 	"github.com/bengarrett/namzd/ls"
 	"github.com/nalgeon/be"
 )
@@ -354,7 +355,8 @@ func TestPrint(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var buf bytes.Buffer
-			ls.Print(&buf, true, tt.count, tt.path, tt.fd)
+			colorWriter := color.NewWriter(&buf, false)
+			ls.Print(colorWriter, true, tt.count, tt.path, tt.fd)
 			be.Equal(t, buf.String(), tt.want)
 		})
 	}

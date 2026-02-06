@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bengarrett/namzd/color"
 	"github.com/bengarrett/namzd/cp"
 	"github.com/charlievieth/fastwalk"
 )
@@ -27,6 +28,7 @@ type Config struct {
 	LastModified  bool
 	Oldest        bool
 	Newest        bool
+	NoColor       bool
 	Panic         bool
 	StdErrors     bool
 	Destination   string
@@ -41,7 +43,9 @@ func (opt Config) Walks(w io.Writer, pattern string, roots ...string) error {
 	for _, root := range roots {
 		if count, err = opt.Walk(w, count, pattern, root); err != nil {
 			if opt.StdErrors {
-				fmt.Fprintf(os.Stderr, "%s: %v\n", root, err)
+				stderrWriter := color.NewWriter(os.Stderr, opt.NoColor)
+				stderrWriter.PrintColorf("%s: ", color.ColorPath, root)
+				stderrWriter.PrintColorf("%v\n", color.ColorError, err)
 			}
 			if opt.Panic {
 				os.Exit(1)
@@ -55,7 +59,10 @@ func (opt Config) Walks(w io.Writer, pattern string, roots ...string) error {
 // Walk the root directory to match filenames to the pattern and writes the results to the out writer.
 // The counted finds is returned or left at 0 if not counting.
 func (opt Config) Walk(out io.Writer, count int, pattern, root string) (int, error) { //nolint:gocognit,cyclop,funlen
-	fmt.Println("walking")
+	// Create color writers for output and error streams
+	colorOut := color.NewWriter(out, opt.NoColor)
+	colorErr := color.NewWriter(os.Stderr, opt.NoColor)
+
 	conf := fastwalk.Config{
 		Follow:     opt.Follow,
 		Sort:       opt.Sort,
@@ -69,7 +76,8 @@ func (opt Config) Walk(out io.Writer, count int, pattern, root string) (int, err
 				return fmt.Errorf("walk: %w", err)
 			}
 			if opt.StdErrors {
-				fmt.Fprintf(os.Stderr, "%s: %v\n", path, err)
+				colorErr.PrintColorf("%s: ", color.ColorPath, path)
+				colorErr.PrintColorf("%v\n", color.ColorError, err)
 			}
 			return nil
 		}
@@ -79,7 +87,8 @@ func (opt Config) Walk(out io.Writer, count int, pattern, root string) (int, err
 				return fmt.Errorf("walk: %w", err)
 			}
 			if opt.StdErrors {
-				fmt.Fprintf(os.Stderr, "%s: %v\n", path, err)
+				colorErr.PrintColorf("%s: ", color.ColorPath, path)
+				colorErr.PrintColorf("%v\n", color.ColorError, err)
 			}
 			return nil
 		}
@@ -88,7 +97,7 @@ func (opt Config) Walk(out io.Writer, count int, pattern, root string) (int, err
 				if opt.Count {
 					count++
 				}
-				Print(out, opt.LastModified, count, path, find)
+				Print(colorOut, opt.LastModified, count, path, find)
 				if opt.Oldest {
 					(&oldest).UpdateO(count, path, find)
 				}
@@ -109,14 +118,14 @@ func (opt Config) Walk(out io.Writer, count int, pattern, root string) (int, err
 		// this is required to avoid a possible race condition when writing to the io.Writer
 		printMu.Lock()
 		defer printMu.Unlock()
-		opt.Print(out, count, path)
+		opt.Print(colorOut, count, path)
 		return err
 	}
 	if err := fastwalk.Walk(&conf, root, walkFn); err != nil {
 		return count, fmt.Errorf("fastwalk: %w", err)
 	}
-	opt.oldest(out, &oldest)
-	opt.newest(out, &newest)
+	opt.oldest(colorOut, &oldest)
+	opt.newest(colorOut, &newest)
 	return count, nil
 }
 
@@ -372,54 +381,66 @@ func (m *Match) UpdateN(count int, path string, find Find) {
 }
 
 // Print the matched find to the writer.
-func Print(out io.Writer, lastMod bool, count int, path string, find Find) {
+func Print(out *color.Writer, lastMod bool, count int, path string, find Find) {
 	if out == nil {
-		out = io.Discard
+		out = color.NewWriter(io.Discard, false)
 	}
 	if count > 0 {
-		fmt.Fprintf(out, "%d\t", count)
+		out.PrintColorf("%d\t", color.ColorCount, count)
 	}
-	fmt.Fprint(out, find.Name)
+	out.PrintColor(find.Name, color.ColorFileName)
 	if lastMod && !find.ModTime.IsZero() {
 		s := find.ModTime.Format("2006-01-02")
-		fmt.Fprintf(out, " (%s)", s)
+		out.PrintColorf(" (%s)", color.ColorDate, s)
 	}
-	fmt.Fprint(out, " > "+path+"\n")
+	out.PrintColorf(" > %s\n", color.ColorPath, path)
 }
 
 // Print the matched path to the out writer.
-func (opt Config) Print(out io.Writer, count int, path string) {
+func (opt Config) Print(out *color.Writer, count int, path string) {
 	if out == nil {
-		out = io.Discard
+		out = color.NewWriter(io.Discard, opt.NoColor)
 	}
 	if count > 0 {
-		fmt.Fprintf(out, "%d\t", count)
+		out.PrintColorf("%d\t", color.ColorCount, count)
 	}
 	if opt.LastModified {
 		fi, err := os.Stat(path)
 		if err != nil {
-			fmt.Fprintln(out)
+			out.PrintColor("\n", color.ColorPath)
 			return
 		}
 		s := fi.ModTime().Format("2006-01-02")
-		fmt.Fprintf(out, "(%s) ", s)
+		out.PrintColorf("(%s) ", color.ColorDate, s)
 	}
-	fmt.Fprint(out, path+"\n")
+
+	// Split path into directory and filename for different colors
+	filename := filepath.Base(path)
+	dir := filepath.Dir(path)
+
+	if dir == "." {
+		// If in current directory, just show filename
+		out.PrintColorf("%s\n", color.ColorFileName, filename)
+	} else {
+		// Show directory in path color and filename in file color
+		out.PrintColorf("%s/", color.ColorPath, dir)
+		out.PrintColorf("%s\n", color.ColorFileName, filename)
+	}
 }
 
-func (opt Config) oldest(w io.Writer, oldest *Match) {
+func (opt Config) oldest(w *color.Writer, oldest *Match) {
 	if !opt.Oldest || oldest.Fd.ModTime.IsZero() || oldest.Fd.Name == "" {
 		return
 	}
-	fmt.Fprintln(w, "Oldest found match:")
+	w.PrintColorBoldf("Oldest found match:\n", color.ColorHeader)
 	Print(w, true, oldest.Count, oldest.Path, oldest.Fd)
 }
 
-func (opt Config) newest(w io.Writer, newest *Match) {
+func (opt Config) newest(w *color.Writer, newest *Match) {
 	if !opt.Newest || newest.Fd.ModTime.IsZero() || newest.Fd.Name == "" {
 		return
 	}
-	fmt.Fprintln(w, "Newest found match:")
+	w.PrintColorBoldf("Newest found match:\n", color.ColorHeader)
 	Print(w, true, newest.Count, newest.Path, newest.Fd)
 }
 
