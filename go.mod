@@ -4,14 +4,14 @@ module github.com/bengarrett/namzd
 go 1.25.6
 
 require (
-	github.com/alecthomas/kong v1.13.0
+	github.com/alecthomas/kong v1.14.0
 	github.com/charlievieth/fastwalk v1.0.14
+	github.com/charmbracelet/colorprofile v0.4.1
+	github.com/charmbracelet/x/ansi v0.11.3
 	github.com/nalgeon/be v0.3.0
 )
 
 require (
-	github.com/charmbracelet/colorprofile v0.4.1 // indirect
-	github.com/charmbracelet/x/ansi v0.11.3 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/clipperhouse/displaywidth v0.6.1 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect
