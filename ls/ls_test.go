@@ -3,6 +3,7 @@ package ls_test
 import (
 	"bytes"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -207,6 +208,13 @@ func TestConfig(t *testing.T) { //nolint:funlen
 func TestConfig_Walk(t *testing.T) {
 	t.Parallel()
 	tdir, _ := filepath.Abs(filepath.Join("..", "testdata"))
+	// the emptydir/ is used by the Match files and directories test, however git doesn't store empty dirs.
+	edir, _ := filepath.Abs(filepath.Join("..", "testdata", "emptydir"))
+	if _, err := os.Stat(edir); os.IsNotExist(err) {
+		if err := os.MkdirAll(edir, 0o755); err != nil {
+			t.Log(err)
+		}
+	}
 	tests := []struct {
 		name      string
 		pattern   string
@@ -248,7 +256,7 @@ func TestConfig_Walk(t *testing.T) {
 			opt: ls.Config{
 				Directory: true,
 			},
-			wantFinds: 7, // 6 files + 1 directory (testdata itself)
+			wantFinds: 8, // 7 files + 1 directory (testdata itself)
 			wantErr:   false,
 		},
 	}
