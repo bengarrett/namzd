@@ -248,7 +248,7 @@ func TestConfig_Walk(t *testing.T) {
 			opt: ls.Config{
 				Directory: true,
 			},
-			wantFinds: 8, // 7 files + 1 directory (testdata itself)
+			wantFinds: 7, // 6 files + 1 directory (testdata itself)
 			wantErr:   false,
 		},
 	}

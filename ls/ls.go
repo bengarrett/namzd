@@ -449,5 +449,6 @@ func (opt Config) newest(w *color.Writer, newest *Match) {
 // However due to false positives created by systems that lacked a real-time clock,
 // it treats Epoch as the 1 February 1980, and not 1 January, 1980.
 func DosEpoch(t time.Time) bool {
-	return t.UTC().Before(time.Date(1980, time.February, 1, 0, 0, 0, 0, time.UTC))
+	u := time.Date(1980, time.February, 1, 0, 0, 0, 0, time.UTC)
+	return t.UTC().Before(u)
 }

@@ -1,15 +1,16 @@
-version: "2"
+version: '2'
 linters:
   default: all
   disable:
     - exhaustruct
+    - gomodguard
     - nlreturn
     - noinlineerr
     - varnamelen
     - wsl
     - wsl_v5
     # the parallel tests cause race conditions
-    - paralleltest 
+    - paralleltest
     - tparallel
   exclusions:
     generated: lax
@@ -28,6 +29,9 @@ linters:
           - gochecknoglobals
           - lll
         path: main\.go
+      - linters:
+          - goconst
+        path: _test\.go
   settings:
     depguard:
       rules:

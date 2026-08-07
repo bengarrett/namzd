@@ -71,18 +71,19 @@ func (cmd *Cmd) Run() error {
 	}
 
 	// Validate required arguments
+	const format = "run cmd: %w"
 	if cmd.Match == "" {
-		return fmt.Errorf("run cmd: %w", ErrMatchRequired)
+		return fmt.Errorf(format, ErrMatchRequired)
 	}
 	if len(cmd.Paths) == 0 {
-		return fmt.Errorf("run cmd: %w", ErrPathsRequired)
+		return fmt.Errorf(format, ErrPathsRequired)
 	}
-
+	const fmtls = "run ls: %w"
 	if err := cp.CheckDest(opt.Destination); err != nil {
-		return fmt.Errorf("run ls: %w", err)
+		return fmt.Errorf(fmtls, err)
 	}
 	if err := opt.Walks(os.Stdout, cmd.Match, cmd.Paths...); err != nil {
-		return fmt.Errorf("run ls: %w", err)
+		return fmt.Errorf(fmtls, err)
 	}
 	return nil
 }
@@ -146,18 +147,20 @@ func main() {
 	}
 
 	cpgrp := kong.Group{
-		Key:         "copy",
-		Title:       "Copier:",
-		Description: "Copy all matched files to a target directory. This option cannot be used with the archive options.",
+		Key:   "copy",
+		Title: "Copier:",
+		Description: "Copy all matched files to a target directory. " +
+			"This option cannot be used with the archive options.",
 	}
 	errgrp := kong.Group{
 		Key:   "errs",
 		Title: "Errors:",
 	}
 	zipgrp := kong.Group{
-		Key:         "zip",
-		Title:       "Archives:",
-		Description: "Also search within archives for matching files. This will not recursively search archives contained within archives.",
+		Key:   "zip",
+		Title: "Archives:",
+		Description: "Also search within archives for matching files. " +
+			"This will not recursively search archives contained within archives.",
 	}
 
 	ctx := kong.Parse(&cli,

@@ -57,7 +57,8 @@ func (w *Writer) Writer() io.Writer {
 // IsTerminal checks if the writer is a terminal that supports colors.
 func (w *Writer) IsTerminal() bool {
 	// Check for forced no-color mode
-	if w.noColor || os.Getenv("NO_COLOR") != "" {
+	const noColorKey = "NO_COLOR"
+	if w.noColor || os.Getenv(noColorKey) != "" {
 		return false
 	}
 
