@@ -1,13 +1,13 @@
 class Namzd < Formula
   desc "Quickly find files by name or extension"
   homepage "https://github.com/bengarrett/namzd"
-  url "https://github.com/bengarrett/namzd/archive/refs/tags/v1.3.2.tar.gz"
-  sha256 "93b3411bec40265d5e4c19e3f0e817f44634c79478756b1370675ef9de730532"
-  version "1.3.2"
+  url "https://github.com/bengarrett/namzd/archive/refs/tags/v1.3.3.tar.gz"
+  sha256 "3135689c07b5d60219cf07a3105fb3af00ee80f110100dfb2c3234eccc9bbfe4"
+  version "1.3.3"
   license "GPL-3.0-only"
 
-  @commit = "dc611f6de34c5af9e86248189cf244e50c56a2c9"
-  @build_date = "2026-08-07T22:26:01+10:00"
+  @commit = "0dce4d208550be5588ad27076fefae03f4710e8f"
+  @build_date = "2026-10-28T14:44:42+11:00"
 
   livecheck do
     url :stable
